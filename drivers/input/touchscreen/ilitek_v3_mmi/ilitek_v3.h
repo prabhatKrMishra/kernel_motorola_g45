@@ -131,21 +131,21 @@
 #define TDDI_INTERFACE			BUS_SPI /* BUS_I2C(0x18) or BUS_SPI(0x1C) */
 #define VDD_VOLTAGE			1800000
 #define VCC_VOLTAGE			1800000
-#define SPI_CLK                         9      /* follow by clk list */
+#define SPI_CLK                         14     /* 14 maps to TP_SPI_CLK_15M (15MHz) */
 #define SPI_RETRY			5
 #define IRQ_GPIO_NUM			66
 #define TR_BUF_SIZE			(6*K) /* Buffer size of touch report */
 #define TR_BUF_LIST_SIZE		(256) /* Buffer size of touch report for debug data */
 #define SPI_TX_BUF_SIZE  		(6*K)
 #define SPI_RX_BUF_SIZE  		(6*K)
-#define WQ_ESD_DELAY			4000
+#define WQ_ESD_DELAY			2000
 #define WQ_BAT_DELAY			2000
 #define AP_INT_TIMEOUT			600 /*600ms*/
 #define MP_INT_TIMEOUT			5000 /*5s*/
 #define MT_B_TYPE				ENABLE
 #define TDDI_RST_BIND			DISABLE
 #define MT_PRESSURE				DISABLE
-#define ENABLE_WQ_ESD			DISABLE
+#define ENABLE_WQ_ESD			ENABLE
 #define ENABLE_WQ_BAT			DISABLE
 #ifdef ILI_SENSOR_EN
 #define ENABLE_GESTURE			ENABLE
@@ -172,7 +172,7 @@
 #define USB_DETECT_OUT_QCOM		0
 #define CHARGER_NOTIFIER_CALLBACK      ENABLE
 #endif
-#define ENABLE_EDGE_PALM_PARA		DISABLE
+#define ENABLE_EDGE_PALM_PARA		ENABLE
 #define MULTI_REPORT_RATE		DISABLE
 #define ENGINEER_FLOW			ENABLE
 #define DMESG_SEQ_FILE			ENABLE
@@ -1190,10 +1190,10 @@ struct ilitek_ts_data {
 	u8 ych_num;
 	u8 stx;
 	u8 srx;
-	u8 *update_buf;
-	u8 *tr_buf;
-	u8 *spi_tx;
-	u8 *spi_rx;
+	u8 *update_buf ____cacheline_aligned;
+	u8 *tr_buf ____cacheline_aligned;
+	u8 *spi_tx ____cacheline_aligned;
+	u8 *spi_rx ____cacheline_aligned;
 #ifdef ROI
 	u8 knuckle_roi_data[ROI_DATA_READ_LENGTH];
 #endif
