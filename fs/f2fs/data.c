@@ -1979,6 +1979,7 @@ next:
 	}
 
 	if (size) {
+		flags |= FIEMAP_EXTENT_MERGED;
 		if (IS_ENCRYPTED(inode))
 			flags |= FIEMAP_EXTENT_DATA_ENCRYPTED;
 
