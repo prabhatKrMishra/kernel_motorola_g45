@@ -456,6 +456,11 @@ int ili_gesture_recovery(void)
 	atomic_set(&ilits->esd_stat, START);
 
 	ILI_INFO("Doing gesture recovery\n");
+
+	/* Force release all touches */
+	ili_touch_release_all_point();
+	input_sync(ilits->input);
+
 	ret = ilits->ges_recover();
 
 	atomic_set(&ilits->esd_stat, END);
@@ -467,6 +472,11 @@ void ili_spi_recovery(void)
 	atomic_set(&ilits->esd_stat, START);
 
 	ILI_INFO("Doing spi recovery\n");
+
+	/* Force release all touches */
+	ili_touch_release_all_point();
+	input_sync(ilits->input);
+
 	if (ili_fw_upgrade_handler(NULL) < 0)
 		ILI_ERR("FW upgrade failed\n");
 
@@ -495,10 +505,9 @@ int ili_wq_esd_i2c_check(void)
 
 static void ilitek_tddi_wq_esd_check(struct work_struct *work)
 {
-	if (mutex_is_locked(&ilits->touch_mutex)) {
-		ILI_INFO("touch is locked, ignore\n");
-		return ;
-	}
+	/* Monitor IC health regardless of touch state.
+	 * Contention is handled by the touch_mutex.
+	 */
 	mutex_lock(&ilits->touch_mutex);
 	if (ilits->esd_recover() < 0) {
 		ILI_ERR("SPI ACK failed, doing spi recovery\n");
