@@ -464,6 +464,11 @@ int ili_gesture_recovery(void)
 	atomic_set(&ilits->esd_stat, START);
 
 	ILI_INFO("Doing gesture recovery\n");
+
+	/* Force release all touches */
+	ili_touch_release_all_point();
+	input_sync(ilits->input);
+
 	ret = ilits->ges_recover();
 
 	atomic_set(&ilits->esd_stat, END);
@@ -475,6 +480,11 @@ void ili_spi_recovery(void)
 	atomic_set(&ilits->esd_stat, START);
 
 	ILI_INFO("Doing spi recovery\n");
+
+	/* Force release all touches */
+	ili_touch_release_all_point();
+	input_sync(ilits->input);
+
 	if (ili_fw_upgrade_handler(NULL) < 0)
 		ILI_ERR("FW upgrade failed\n");
 

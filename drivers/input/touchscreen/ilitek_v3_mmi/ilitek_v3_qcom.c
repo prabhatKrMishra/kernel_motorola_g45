@@ -403,6 +403,16 @@ static irqreturn_t ilitek_plat_isr_top_half(int irq, void *dev_id)
 
 static irqreturn_t ilitek_plat_isr_bottom_half(int irq, void *dev_id)
 {
+	/*
+	 * If the system is suspending or suspended, wait for completion or skip reporting.
+	 */
+	if (ilits->pm_suspend) {
+		if (wait_for_completion_timeout(&ilits->pm_completion, msecs_to_jiffies(100)) == 0) {
+			ILI_DBG("PM completion timeout in ISR, skipping report\n");
+			return IRQ_HANDLED;
+		}
+	}
+
 	if (mutex_is_locked(&ilits->touch_mutex)) {
 		ILI_DBG("touch is locked, ignore\n");
 		return IRQ_HANDLED;
