@@ -585,6 +585,12 @@ void ili_wq_ctrl(int type, int ctrl)
 				ILI_ERR("wq esd is null\n");
 				break;
 			}
+
+			if (ilits->wq_esd_ctrl == ctrl) {
+				ILI_DBG("ESD workqueue control state unchanged, skipping\n");
+				break;
+			}
+
 			ilits->wq_esd_ctrl = ctrl;
 			if (ctrl == ENABLE) {
 				ILI_DBG("execute esd check\n");
@@ -603,6 +609,12 @@ void ili_wq_ctrl(int type, int ctrl)
 				ILI_ERR("WQ BAT is null\n");
 				break;
 			}
+
+			if (ilits->wq_bat_ctrl == ctrl) {
+				ILI_DBG("BAT workqueue control state unchanged, skipping\n");
+				break;
+			}
+
 			ilits->wq_bat_ctrl = ctrl;
 			if (ctrl == ENABLE) {
 				ILI_DBG("execute bat check\n");
