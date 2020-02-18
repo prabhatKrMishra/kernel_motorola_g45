@@ -158,3 +158,8 @@ arch/arm/boot/dts/vendor
 out
 
 KernelSU
+
+#
+#Ignoring Android.bp link file
+#
+Android.bp
