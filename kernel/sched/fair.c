@@ -10996,10 +10996,15 @@ static inline int find_new_ilb(void)
 
 	for_each_cpu_and(ilb, nohz.idle_cpus_mask,
 			      housekeeping_cpumask(HK_FLAG_MISC)) {
+
 #ifdef CONFIG_SCHED_WALT
 		if (cpu_isolated(ilb))
 			continue;
 #endif
+
+		if (ilb == smp_processor_id())
+			continue;
+
 		if (idle_cpu(ilb))
 			return ilb;
 	}
