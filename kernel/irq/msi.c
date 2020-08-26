@@ -370,8 +370,13 @@ static bool msi_check_reservation_mode(struct irq_domain *domain,
 {
 	struct msi_desc *desc;
 
-	if (domain->bus_token != DOMAIN_BUS_PCI_MSI)
+	switch(domain->bus_token) {
+	case DOMAIN_BUS_PCI_MSI:
+	case DOMAIN_BUS_VMD_MSI:
+		break;
+	default:
 		return false;
+	}
 
 	if (!(info->flags & MSI_FLAG_MUST_REACTIVATE))
 		return false;
@@ -455,7 +460,7 @@ int msi_domain_alloc_irqs(struct irq_domain *domain, struct device *dev,
 		irq_data = irq_domain_get_irq_data(domain, i);
 		if (!can_reserve) {
 			irqd_clr_can_reserve(irq_data);
-			if (domain->flags & IRQ_DOMAIN_MSI_NOMASK_QUIRK)
+			if (domain->flags & IRQD_MSI_NOMASK_QUIRK)
 				irqd_set_msi_nomask_quirk(irq_data);
 		}
 		ret = irq_domain_activate_irq(irq_data, can_reserve);
