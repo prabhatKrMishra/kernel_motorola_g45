@@ -137,7 +137,6 @@ static inline void __rt_mutex_basic_init(struct rt_mutex *lock)
 /*
  * PI-futex support (proxy locking functions, etc.):
  */
-extern struct task_struct *rt_mutex_next_owner(struct rt_mutex *lock);
 extern void rt_mutex_init_proxy_locked(struct rt_mutex *lock,
 				       struct task_struct *proxy_owner);
 extern void rt_mutex_proxy_unlock(struct rt_mutex *lock);
