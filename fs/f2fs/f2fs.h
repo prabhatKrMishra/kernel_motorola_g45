@@ -146,6 +146,11 @@ struct f2fs_mount_info {
 #ifdef CONFIG_FS_ENCRYPTION
 	bool inlinecrypt;		/* inline encryption enabled */
 #endif
+	int discard_unit;		/*
+					 * discard command's offset/size should
+					 * be aligned to this unit: block,
+					 * segment or section
+					 */
 	block_t unusable_cap_perc;	/* percentage for cap */
 	block_t unusable_cap;		/* Amount of space allowed to be
 					 * unusable when disabling checkpoint
@@ -1290,6 +1295,12 @@ enum fsync_mode {
 	FSYNC_MODE_POSIX,	/* fsync follows posix semantics */
 	FSYNC_MODE_STRICT,	/* fsync behaves in line with ext4 */
 	FSYNC_MODE_NOBARRIER,	/* fsync behaves nobarrier based on posix */
+};
+
+enum {
+	DISCARD_UNIT_BLOCK,	/* basic discard unit is block */
+	DISCARD_UNIT_SEGMENT,	/* basic discard unit is segment */
+	DISCARD_UNIT_SECTION,	/* basic discard unit is section */
 };
 
 /*
@@ -4192,6 +4203,11 @@ static inline bool is_journalled_quota(struct f2fs_sb_info *sbi)
 		return true;
 #endif
 	return false;
+}
+
+static inline bool f2fs_block_unit_discard(struct f2fs_sb_info *sbi)
+{
+	return F2FS_OPTION(sbi).discard_unit == DISCARD_UNIT_BLOCK;
 }
 
 #define EFSBADCRC	EBADMSG		/* Bad CRC detected */
