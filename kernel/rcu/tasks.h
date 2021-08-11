@@ -247,6 +247,8 @@ static int __noreturn rcu_tasks_kthread(void *arg)
 	for (;;) {
 		struct rcu_tasks_percpu *rtpcp = per_cpu_ptr(rtp->rtpcpu, 0);  // for_each...
 
+		set_tasks_gp_state(rtp, RTGS_WAIT_CBS);
+
 		/* Pick up any new callbacks. */
 		raw_spin_lock_irqsave_rcu_node(rtpcp, flags);
 		rcu_segcblist_advance(&rtpcp->cblist, rcu_seq_current(&rtp->tasks_gp_seq));
@@ -291,8 +293,6 @@ static int __noreturn rcu_tasks_kthread(void *arg)
 		raw_spin_unlock_irqrestore_rcu_node(rtpcp, flags);
 		/* Paranoid sleep to keep this from entering a tight loop */
 		schedule_timeout_idle(rtp->gp_sleep);
-
-		set_tasks_gp_state(rtp, RTGS_WAIT_CBS);
 	}
 }
 
