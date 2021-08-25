@@ -125,6 +125,7 @@ static struct page *erofs_read_inode(struct inode *inode,
 			nblks = le32_to_cpu(die->i_u.compressed_blocks);
 
 		kfree(copied);
+		copied = NULL;
 		break;
 	case EROFS_INODE_LAYOUT_COMPACT:
 		vi->inode_isize = sizeof(struct erofs_inode_compact);
