@@ -623,7 +623,6 @@ static noinstr void rcu_eqs_enter(bool user)
 	instrumentation_begin();
 	trace_rcu_dyntick(TPS("Start"), rdp->dynticks_nesting, 0, atomic_read(&rdp->dynticks));
 	WARN_ON_ONCE(IS_ENABLED(CONFIG_RCU_EQS_DEBUG) && !user && !is_idle_task(current));
-	rcu_prepare_for_idle();
 	rcu_preempt_deferred_qs(current);
 
 	// instrumentation for the noinstr rcu_dynticks_eqs_enter()
@@ -741,9 +740,6 @@ noinstr void rcu_nmi_exit(void)
 	trace_rcu_dyntick(TPS("Startirq"), rdp->dynticks_nmi_nesting, 0, atomic_read(&rdp->dynticks));
 	WRITE_ONCE(rdp->dynticks_nmi_nesting, 0); /* Avoid store tearing. */
 
-	if (!in_nmi())
-		rcu_prepare_for_idle();
-
 	// instrumentation for the noinstr rcu_dynticks_eqs_enter()
 	kasan_check_write(&rdp->dynticks, sizeof(rdp->dynticks));
 	instrumentation_end();
@@ -845,7 +841,6 @@ static void noinstr rcu_eqs_exit(bool user)
 	// instrumentation for the noinstr rcu_dynticks_eqs_exit()
 	kasan_check_write(&rdp->dynticks, sizeof(rdp->dynticks));
 
-	rcu_cleanup_after_idle();
 	trace_rcu_dyntick(TPS("End"), rdp->dynticks_nesting, 1, atomic_read(&rdp->dynticks));
 	WARN_ON_ONCE(IS_ENABLED(CONFIG_RCU_EQS_DEBUG) && !user && !is_idle_task(current));
 	WRITE_ONCE(rdp->dynticks_nesting, 1);
@@ -986,12 +981,6 @@ noinstr void rcu_nmi_enter(void)
 		// RCU is not watching here ...
 		rcu_dynticks_eqs_exit();
 		// ... but is watching here.
-
-		if (!in_nmi()) {
-			instrumentation_begin();
-			rcu_cleanup_after_idle();
-			instrumentation_end();
-		}
 
 		instrumentation_begin();
 		// instrumentation for the noinstr rcu_dynticks_curr_cpu_in_eqs()
