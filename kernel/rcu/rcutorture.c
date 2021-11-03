@@ -2776,7 +2776,7 @@ static int rcu_torture_read_exit(void *unused)
 				     &trs, "%s",
 				     "rcu_torture_read_exit_child");
 		if (IS_ERR(tsp)) {
-			VERBOSE_TOROUT_ERRSTRING("out of memory");
+			TOROUT_ERRSTRING("out of memory");
 			errexit = true;
 			tsp = NULL;
 			break;
@@ -3103,7 +3103,7 @@ rcu_torture_init(void)
 					   sizeof(fakewriter_tasks[0]),
 					   GFP_KERNEL);
 		if (fakewriter_tasks == NULL) {
-			VERBOSE_TOROUT_ERRSTRING("out of memory");
+			TOROUT_ERRSTRING("out of memory");
 			firsterr = -ENOMEM;
 			goto unwind;
 		}
@@ -3119,7 +3119,7 @@ rcu_torture_init(void)
 	rcu_torture_reader_mbchk = kcalloc(nrealreaders, sizeof(*rcu_torture_reader_mbchk),
 					   GFP_KERNEL);
 	if (!reader_tasks || !rcu_torture_reader_mbchk) {
-		VERBOSE_TOROUT_ERRSTRING("out of memory");
+		TOROUT_ERRSTRING("out of memory");
 		firsterr = -ENOMEM;
 		goto unwind;
 	}
@@ -3138,7 +3138,7 @@ rcu_torture_init(void)
 	if (nrealnocbers > 0) {
 		nocb_tasks = kcalloc(nrealnocbers, sizeof(nocb_tasks[0]), GFP_KERNEL);
 		if (nocb_tasks == NULL) {
-			VERBOSE_TOROUT_ERRSTRING("out of memory");
+			TOROUT_ERRSTRING("out of memory");
 			firsterr = -ENOMEM;
 			goto unwind;
 		}
