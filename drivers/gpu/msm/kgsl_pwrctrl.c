@@ -1622,8 +1622,6 @@ void kgsl_pwrctrl_close(struct kgsl_device *device)
 
 	pwr->power_flags = 0;
 
-	kgsl_bus_close(device);
-
 	pm_runtime_disable(&device->pdev->dev);
 
 	icc_put(device->l3_icc);
