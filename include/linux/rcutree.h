@@ -57,6 +57,7 @@ void start_poll_synchronize_rcu_full(struct rcu_gp_oldstate *rgosp);
 bool poll_state_synchronize_rcu(unsigned long oldstate);
 bool poll_state_synchronize_rcu_full(struct rcu_gp_oldstate *rgosp);
 void cond_synchronize_rcu(unsigned long oldstate);
+void cond_synchronize_rcu_full(struct rcu_gp_oldstate *rgosp);
 
 void rcu_idle_enter(void);
 void rcu_idle_exit(void);
