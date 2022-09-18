@@ -333,6 +333,12 @@ struct mem_cgroup {
 #if defined(CONFIG_TRANSPARENT_HUGEPAGE) || defined(CONFIG_GKI_OPT_FEATURES)
 	struct deferred_split deferred_split_queue;
 #endif
+
+#ifdef CONFIG_LRU_GEN
+	/* per-memcg mm_struct list */
+	struct lru_gen_mm_list mm_list;
+#endif
+
 #ifdef CONFIG_QGKI
 	ANDROID_OEM_DATA(1);
 #endif
