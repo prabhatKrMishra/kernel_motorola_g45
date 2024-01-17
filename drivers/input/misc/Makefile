@@ -87,4 +87,5 @@ obj-$(CONFIG_INPUT_WM831X_ON)		+= wm831x-on.o
 obj-$(CONFIG_INPUT_XEN_KBDDEV_FRONTEND)	+= xen-kbdfront.o
 obj-$(CONFIG_INPUT_YEALINK)		+= yealink.o
 obj-$(CONFIG_INPUT_IDEAPAD_SLIDEBAR)	+= ideapad_slidebar.o
-
+obj-$(CONFIG_INPUT_QPNP_POWER_ON_MMI)	+= qpnp_power_on_mmi/
+obj-$(CONFIG_RBS_FOD_MMI)		+= rbs_fod_mmi/

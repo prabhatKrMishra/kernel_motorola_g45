@@ -232,4 +232,14 @@ source "drivers/counter/Kconfig"
 
 source "drivers/kernelsu/Kconfig"
 
+source "drivers/moto_f_usbnet/Kconfig"
+
+source "drivers/mmi_annotate/Kconfig"
+
+source "drivers/mmi_info/Kconfig"
+
+source "drivers/mmi_relay/Kconfig"
+
+source "drivers/sensors/Kconfig"
+
 endmenu
