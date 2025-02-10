@@ -673,12 +673,20 @@ retry:
 	if (IS_ERR(node_page)) {
 		int err = PTR_ERR(node_page);
 
+		/* The node block was truncated. */
+		if (err == -ENOENT)
+			return;
+
+		if (err == -EFSCORRUPTED)
+			goto stop_checkpoint;
+
 		if (err == -ENOMEM) {
 			cond_resched();
 			goto retry;
-		} else if (err != -ENOENT) {
-			f2fs_stop_checkpoint(sbi, false);
 		}
+
+stop_checkpoint:
+		f2fs_stop_checkpoint(sbi, false);
 		return;
 	}
 	f2fs_update_inode(inode, node_page);
