@@ -781,8 +781,9 @@ static void hybridswap_wait_io_finish(struct hybridswap_io_req *req)
 
 	if (req->io_para.class == HYB_FAULT_OUT) {
 		hybp(HYB_DEBUG, "fault out wait finish start\n");
-		wait_for_completion_io_timeout(&req->io_end_flag,
-				MAX_SCHEDULE_TIMEOUT);
+		if (!wait_for_completion_io_timeout(&req->io_end_flag,
+				MAX_SCHEDULE_TIMEOUT))
+			hybp(HYB_ERR, "fault out io submit timeout");
 
 		return;
 	}
@@ -4477,6 +4478,18 @@ ssize_t hybridswap_zram_increase_show(struct device *dev,
 		"%lu\n", zram->increase_nr_pages >> 8);
 
 	return size;
+}
+
+inline bool skip_zram_write(struct zram *zram, u32 index)
+{
+	zram_slot_lock(zram, index);
+	if (zram_test_flag(zram, index, ZRAM_UNDER_WB) || zram_test_flag(zram, index, ZRAM_BATCHING_OUT)) {
+		zram_slot_unlock(zram, index);
+		pr_info("zram is under wb or batching out index=%d\n", index);
+		return true;
+	}
+	zram_slot_unlock(zram, index);
+	return false;
 }
 
 int mem_cgroup_stored_wm_scale_write(

@@ -48,6 +48,7 @@ extern ssize_t hybridswap_zram_increase_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t len);
 extern ssize_t hybridswap_zram_increase_show(struct device *dev,
 		struct device_attribute *attr, char *buf);
+extern bool skip_zram_write(struct zram *zram, u32 index);
 #endif
 
 #ifdef CONFIG_HYBRIDSWAP_SWAPD
