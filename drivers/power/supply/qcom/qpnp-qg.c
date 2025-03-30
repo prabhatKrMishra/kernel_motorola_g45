@@ -2120,6 +2120,23 @@ static int qg_setprop_batt_age_level(struct qpnp_qg *chip, int batt_age_level)
 	return rc;
 }
 
+static int qc_setprop_batt_cycle_count(struct qpnp_qg *chip, int cycle_count)
+{
+	int rc = 0;
+
+	if (!chip || !chip->counter)
+		return -EINVAL;
+
+	if (cycle_count == 0) {
+		clear_cycle_count(chip->counter);
+	} else {
+		pr_err("only allow setting battery cycle_count to 0 !!!!\n");
+		return -EINVAL;
+	}
+
+	return rc;
+}
+
 static int qg_iio_write_raw(struct iio_dev *indio_dev,
 		struct iio_chan_spec const *chan, int val1,
 		int val2, long mask)
@@ -2173,6 +2190,9 @@ static int qg_iio_write_raw(struct iio_dev *indio_dev,
                chip->dt.iterm_ma = val1;
                qg_dbg(chip, QG_DEBUG_STATUS, "set bat full current = %d\n", chip->dt.iterm_ma);
                break;
+	case PSY_IIO_CYCLE_COUNT:
+		rc = qc_setprop_batt_cycle_count(chip, val1);
+		break;
 	default:
 		pr_debug("Unsupported QG IIO chan %d\n", chan->channel);
 		rc = -EINVAL;

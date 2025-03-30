@@ -2571,6 +2571,17 @@ int smblib_set_prop_batt_capacity(struct smb_charger *chg,
 	return 0;
 }
 
+int smblib_set_prop_batt_cycle_count(struct smb_charger *chg,
+				  const union power_supply_propval *val)
+{
+	int rc;
+	rc = smblib_write_iio_prop(chg, QG, SMB5_QG_CYCLE_COUNT, val->intval);
+	if (rc < 0) {
+		smblib_err(chg, "smb5 set battery cycle_count failed, rc=%d\n", rc);
+	}
+	return rc;
+}
+
 int smblib_set_prop_batt_status(struct smb_charger *chg,
 				  const union power_supply_propval *val)
 {
