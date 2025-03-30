@@ -4817,7 +4817,7 @@ static int qpnp_qg_probe(struct platform_device *pdev)
 	chip->sys_soc = INT_MIN;
 	chip->full_soc = QG_SOC_FULL;
 	chip->chg_iterm_ma = INT_MIN;
-	chip->soh = -EINVAL;
+	chip->soh = 100;
 	chip->esr_actual = -EINVAL;
 	chip->esr_nominal = -EINVAL;
 	chip->batt_age_level = -EINVAL;
