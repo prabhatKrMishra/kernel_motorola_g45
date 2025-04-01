@@ -1,0 +1,86 @@
+&mdss_mdp {
+	dsi_txd_nt36528_656_hd_plus_120_video: qcom,mdss_dsi_txd_nt36528_656_hd_plus_120_video {
+		qcom,mdss-dsi-panel-name =
+			"mipi_mot_vid_txd_nt36528_hdp_656_120";
+		qcom,mdss-dsi-panel-type = "dsi_video_mode";
+		qcom,dsi-ctrl-num = <0>;
+		qcom,dsi-phy-num = <0>;
+		qcom,mdss-dsi-virtual-channel-id = <0>;
+		qcom,mdss-dsi-stream = <0>;
+		qcom,mdss-dsi-bpp = <24>;
+		qcom,mdss-dsi-border-color = <0>;
+		qcom,mdss-dsi-traffic-mode = "burst_mode";
+		qcom,mdss-dsi-bllp-power-mode;
+		qcom,mdss-dsi-bllp-eof-power-mode;
+		qcom,mdss-dsi-lane-0-state;
+		qcom,mdss-dsi-lane-1-state;
+		qcom,mdss-dsi-lane-2-state;
+		qcom,mdss-dsi-lane-3-state;
+		qcom,mdss-dsi-dma-trigger = "trigger_sw";
+		qcom,mdss-dsi-mdp-trigger = "none";
+		qcom,mdss-dsi-lp11-init;
+		qcom,mdss-dsi-reset-sequence =  <0 5>, <1 5>, <0 5>, <1 10>;
+		qcom,mdss-dsi-tx-eot-append;
+		qcom,adjust-timer-wakeup-ms = <1>;
+
+		qcom,mdss-pan-physical-width-dimension = <68>;
+		qcom,mdss-pan-physical-height-dimension = <152>;
+
+		qcom,mdss-dsi-cabc-mv-command = [15 00 00 00 00 00 02 55 03];
+		qcom,mdss-dsi-cabc-mv-command-state =  "dsi_hs_mode";
+		qcom,mdss-dsi-cabc-ui-command = [15 00 00 00 00 00 02 55 01];
+		qcom,mdss-dsi-cabc-ui-command-state =  "dsi_hs_mode";
+		qcom,mdss-dsi-cabc-dis-command = [15 01 00 00 00 00 02 55 00];
+		qcom,mdss-dsi-cabc-dis-command-state =  "dsi_hs_mode";
+
+		qcom,mdss-dsi-display-timings {
+			timing@0 {
+				qcom,mdss-dsi-panel-width = <720>;
+				qcom,mdss-dsi-panel-height = <1612>;
+				qcom,mdss-dsi-h-front-porch = <64>;
+				qcom,mdss-dsi-h-back-porch = <120>;
+				qcom,mdss-dsi-h-pulse-width = <4>;
+				qcom,mdss-dsi-h-sync-skew = <0>;
+				qcom,mdss-dsi-v-back-porch = <13>;
+				qcom,mdss-dsi-v-front-porch = <315>;
+				qcom,mdss-dsi-v-pulse-width = <1>;
+				qcom,mdss-dsi-panel-framerate = <120>;
+				qcom,mdss-dsi-on-command = [
+                                39 00 00 00 00 00 02 ff 23
+                                39 00 00 00 00 00 02 fb 01
+                                39 00 00 00 00 00 02 58 ff
+                                39 00 00 00 00 00 02 59 ff
+                                39 00 00 00 00 00 02 5a f8
+                                39 00 00 00 00 00 02 5b ee
+                                39 00 00 00 00 00 02 5c e4
+                                39 00 00 00 00 00 02 5d dc
+                                39 00 00 00 00 00 02 5e d8
+                                39 00 00 00 00 00 02 5f d4
+                                39 00 00 00 00 00 02 60 cd
+                                39 00 00 00 00 00 02 61 c9
+                                39 00 00 00 00 00 02 62 c5
+                                39 00 00 00 00 00 02 63 c1
+                                39 00 00 00 00 00 02 64 bf
+                                39 00 00 00 00 00 02 65 bd
+                                39 00 00 00 00 00 02 66 bb
+                                39 00 00 00 00 00 02 67 b9
+				39 00 00 00 00 00 02 ff 10
+				39 00 00 00 00 00 02 fb 01
+				39 00 00 00 00 00 03 68 04 01
+				39 00 00 00 00 00 03 51 00 00
+				39 00 00 00 00 00 02 53 2C
+				39 00 00 00 00 00 02 55 01
+				39 00 00 00 00 00 02 35 00
+				05 01 00 00 00 00 01 29
+				05 01 00 00 50 00 01 11
+				];
+				qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
+				qcom,mdss-dsi-off-command = [
+					05 01 00 00 00 00 01 28
+					05 01 00 00 3C 00 01 10
+				];
+				qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
+			};
+		};
+	};
+};
