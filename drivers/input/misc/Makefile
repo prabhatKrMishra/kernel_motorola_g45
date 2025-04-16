@@ -89,3 +89,6 @@ obj-$(CONFIG_INPUT_YEALINK)		+= yealink.o
 obj-$(CONFIG_INPUT_IDEAPAD_SLIDEBAR)	+= ideapad_slidebar.o
 obj-$(CONFIG_INPUT_QPNP_POWER_ON_MMI)	+= qpnp_power_on_mmi/
 obj-$(CONFIG_RBS_FOD_MMI)		+= rbs_fod_mmi/
+
+obj-m += fpc_fps_mmi/
+obj-m += goodix_fod_mmi/

@@ -1,6 +1,6 @@
 # add -Wall to try to catch everything we can.
 EXTRA_CFLAGS += -Wall
-EXTRA_CFLAGS += -I$(ANDROID_BUILD_TOP)/motorola/kernel/modules/include \
+EXTRA_CFLAGS += -I$(srctree)/$(src)/../../../../include \
 
 ifneq ($(filter m y,$(CONFIG_MMI_RELAY)),)
 	EXTRA_CFLAGS += -DMMI_RELAY_MODULE

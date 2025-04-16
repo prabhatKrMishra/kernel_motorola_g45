@@ -1,6 +1,6 @@
 # add -Wall to try to catch everything we can.
 EXTRA_CFLAGS += -Wall
-EXTRA_CFLAGS += -I$(TOP)/motorola/kernel/modules/include
+EXTRA_CFLAGS += -I$(srctree)/$(src)/../../../../include
 
 prod_list := devon
 find_target := $(foreach find, $(prod_list), $(findstring $(find), $(TARGET_PRODUCT)))

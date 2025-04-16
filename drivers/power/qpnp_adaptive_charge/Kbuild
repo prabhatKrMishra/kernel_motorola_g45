@@ -1,10 +1,10 @@
 # add -Wall to try to catch everything we can.
 EXTRA_CFLAGS += -Wall
-EXTRA_CFLAGS += -I$(TOP)/motorola/kernel/modules/include
+EXTRA_CFLAGS += -I$(srctree)/$(src)/../../../include
 
 ifneq ($(filter m y,$(CONFIG_USE_MMI_CHARGER)),)
 	EXTRA_CFLAGS += -DUSE_MMI_CHARGER
-	EXTRA_CFLAGS += -I$(ANDROID_BUILD_TOP)/motorola/kernel/modules/drivers/power/mmi_charger
+	EXTRA_CFLAGS += -I$(srctree)/$(src)/../../drivers/power/mmi_charger
 	KBUILD_EXTRA_SYMBOLS += $(CURDIR)/$(KBUILD_EXTMOD)/../mmi_charger/$(GKI_OBJ_MODULE_DIR)/Module.symvers
 endif
 

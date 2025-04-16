@@ -118,3 +118,6 @@ obj-$(CONFIG_TOUCHSCREEN_NT36XXX)	+= nt36xxx/
 obj-$(CONFIG_TOUCHSCREEN_FTS_V3)	+= focaltech_touch_v3/
 obj-$(CONFIG_TOUCHSCREEN_MMI)	+= touchscreen_mmi/
 obj-$(CONFIG_TOUCHSCREEN_GOODIX_BRL)	+= goodix_berlin_mmi/
+
+obj-m += ilitek_v3_mmi/
+obj-m += chipone_tddi_v2_mmi/
