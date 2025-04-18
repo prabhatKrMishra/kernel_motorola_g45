@@ -16,6 +16,7 @@
 #include <linux/cpuhotplug.h>
 #include <linux/cpumask.h>
 #include <linux/version.h>
+#include <linux/mmzone.h>
 
 #ifdef CONFIG_ZRAM_5_4
 #include "../zram-5.4/zram_drv.h"
@@ -705,36 +706,6 @@ unsigned long fetch_totalreserve_pages(void)
 		val = 25000;
 
 	return val;
-}
-
-struct pglist_data *first_online_pgdat(void)
-{
-	return NODE_DATA(first_online_node);
-}
-
-struct pglist_data *next_online_pgdat(struct pglist_data *pgdat)
-{
-	int nid = next_online_node(pgdat->node_id);
-
-	if (nid == MAX_NUMNODES)
-		return NULL;
-	return NODE_DATA(nid);
-}
-
-struct zone *next_zone(struct zone *zone)
-{
-	pg_data_t *pgdat = zone->zone_pgdat;
-
-	if (zone < pgdat->node_zones + MAX_NR_ZONES - 1)
-		zone++;
-	else {
-		pgdat = next_online_pgdat(pgdat);
-		if (pgdat)
-			zone = pgdat->node_zones;
-		else
-			zone = NULL;
-	}
-	return zone;
 }
 
 unsigned int system_cur_usable_mem(void)
