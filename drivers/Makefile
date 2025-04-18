@@ -196,5 +196,6 @@ obj-$(CONFIG_SENSORS_CLASS)	+= sensors/
 obj-m += fm/
 obj-m += mmi_info/
 obj-m += moto_mm/
-obj-m += moto_swap/
 obj-m += watchdogtest/
+
+obj-$(CONFIG_HYBRIDSWAP_ZRAM) += moto_swap/
