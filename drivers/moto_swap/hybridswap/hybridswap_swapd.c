@@ -16,21 +16,10 @@
 #include <linux/cpuhotplug.h>
 #include <linux/cpumask.h>
 #include <linux/version.h>
-
-#ifdef CONFIG_ZRAM_5_4
+#include <linux/mmzone.h>
 #include "../zram-5.4/zram_drv.h"
 #include "../zram-5.4/zram_drv_internal.h"
 #define MEMCG_OEM_DATA(memcg) ((memcg)->android_oem_data1)
-#elif defined CONFIG_ZRAM_5_15
-#include "../zram-5.15/zram_drv.h"
-#include "../zram-5.15/zram_drv_internal.h"
-#define BIO_MAX_PAGES BIO_MAX_VECS
-#define MEMCG_OEM_DATA(memcg) ((memcg)->android_oem_data1[0])
-#else
-#include "../zram-5.10/zram_drv.h"
-#include "../zram-5.10/zram_drv_internal.h"
-#define MEMCG_OEM_DATA(memcg) ((memcg)->android_oem_data1)
-#endif
 #include "hybridswap_internal.h"
 
 #define MOTO_SWAP_VERSION 3
@@ -699,36 +688,6 @@ static unsigned long fetch_totalreserve_pages(void)
 	}
 
 	return val;
-}
-
-struct pglist_data *first_online_pgdat(void)
-{
-	return NODE_DATA(first_online_node);
-}
-
-struct pglist_data *next_online_pgdat(struct pglist_data *pgdat)
-{
-	int nid = next_online_node(pgdat->node_id);
-
-	if (nid == MAX_NUMNODES)
-		return NULL;
-	return NODE_DATA(nid);
-}
-
-struct zone *next_zone(struct zone *zone)
-{
-	pg_data_t *pgdat = zone->zone_pgdat;
-
-	if (zone < pgdat->node_zones + MAX_NR_ZONES - 1)
-		zone++;
-	else {
-		pgdat = next_online_pgdat(pgdat);
-		if (pgdat)
-			zone = pgdat->node_zones;
-		else
-			zone = NULL;
-	}
-	return zone;
 }
 
 unsigned int system_cur_usable_mem(void)
