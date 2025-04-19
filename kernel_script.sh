@@ -3,40 +3,11 @@
 # provided that proper credit is given to the original author.
 # Unauthorized claiming of authorship is not allowed.
 
-# Apply network parameters for high data performance
-echo "bbr" > /proc/sys/net/ipv4/tcp_congestion_control
-
-# Adjust TCP buffer sizes
-echo 1310720 > /proc/sys/net/core/rmem_default
-echo 8388608 > /proc/sys/net/core/rmem_max
-echo 327680 > /proc/sys/net/core/wmem_default
-echo 8388608 > /proc/sys/net/core/wmem_max
-echo 20480 > /proc/sys/net/core/optmem_max
-echo 10000 > /proc/sys/net/core/netdev_max_backlog
-
-# Adjust TCP receive and send memory
-echo "2097152 4194304 8388608" > /proc/sys/net/ipv4/tcp_rmem
-echo "262144 524288 8388608" > /proc/sys/net/ipv4/tcp_wmem
-
-# Adjust UDP memory limits
-echo "44259 59012 88518" > /proc/sys/net/ipv4/tcp_mem
-echo "88518 118025 177036" > /proc/sys/net/ipv4/udp_mem
-
-# TCP keepalive time (how often to check if the connection is still active)
-echo 1800 > /proc/sys/net/ipv4/tcp_keepalive_time
-# TCP keepalive interval (how often to check)
-echo 60 > /proc/sys/net/ipv4/tcp_keepalive_intvl
-# TCP keepalive probes (how many probes before the connection is considered dead)
-echo 5 > /proc/sys/net/ipv4/tcp_keepalive_probes
-
 # Enable tcp_low_latency for even faster ACKs
 echo 1 > /proc/sys/net/ipv4/tcp_low_latency
 
 # Enable TCP Fast Open
 echo 3 > /proc/sys/net/ipv4/tcp_fastopen
-
-# Increase the Maximum Number of Open Sockets
-echo 1048576 > /proc/sys/net/core/somaxconn
 
 # Disable TCP Slow Start
 echo 1 > /proc/sys/net/ipv4/tcp_slow_start_after_idle
@@ -69,18 +40,28 @@ echo 3 > /proc/sys/vm/dirty_background_ratio
 echo 500 > /proc/sys/vm/dirty_writeback_centisecs
 echo 200 > /proc/sys/vm/dirty_expire_centisecs
 
+# Disable Core control on silver cluster
+echo 0 > /sys/devices/system/cpu/cpu0/core_ctl/enable
+
 # Ultra-Low-Latency
-echo 2000000 > /proc/sys/kernel/sched_latency_ns
-echo 250000 > /proc/sys/kernel/sched_migration_cost_ns
-echo 500000 > /proc/sys/kernel/sched_min_granularity_ns
-echo 100 > /proc/sys/kernel/sched_util_clamp_min_rt_default
-echo 0 > /proc/sys/kernel/sched_wakeup_granularity_ns
 echo 0 > /proc/sys/kernel/sched_schedstats
 
-# Runtime fs tuning
-echo 64 > /sys/block/sda/queue/nr_requests
-echo 0 > /sys/block/sda/queue/iostats
+# Disable logging
+echo "0" > /proc/sys/debug/exception-trace
+echo "0 0 0 0" > /proc/sys/kernel/printk
+
+# Enable suspend to RAM
+echo "deep" > /sys/power/mem_sleep
 
 # Enable console_suspend to save power
 echo "Y" > /sys/module/printk/parameters/console_suspend
+
+# Input boost settings
+echo 100 > /sys/devices/system/cpu/cpu_boost/input_boost_ms
+
+# Runtime fs tuning
+echo 0 > /sys/block/sda/queue/iostats
+
+# Turn off scheduler boost at the end
+echo 0 > /proc/sys/kernel/sched_boost
 
