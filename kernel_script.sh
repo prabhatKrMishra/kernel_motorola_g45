@@ -4,7 +4,7 @@
 # Unauthorized claiming of authorship is not allowed.
 
 # Apply network parameters for high data performance
-echo "bbr" > /proc/sys/net/ipv4/tcp_congestion_control
+echo "westwood" > /proc/sys/net/ipv4/tcp_congestion_control
 
 # Adjust TCP buffer sizes
 echo 1310720 > /proc/sys/net/core/rmem_default
@@ -69,18 +69,28 @@ echo 3 > /proc/sys/vm/dirty_background_ratio
 echo 500 > /proc/sys/vm/dirty_writeback_centisecs
 echo 200 > /proc/sys/vm/dirty_expire_centisecs
 
+# Disable Core control on silver cluster
+echo 0 > /sys/devices/system/cpu/cpu0/core_ctl/enable
+
 # Ultra-Low-Latency
-echo 2000000 > /proc/sys/kernel/sched_latency_ns
-echo 250000 > /proc/sys/kernel/sched_migration_cost_ns
-echo 500000 > /proc/sys/kernel/sched_min_granularity_ns
-echo 100 > /proc/sys/kernel/sched_util_clamp_min_rt_default
-echo 0 > /proc/sys/kernel/sched_wakeup_granularity_ns
 echo 0 > /proc/sys/kernel/sched_schedstats
 
-# Runtime fs tuning
-echo 64 > /sys/block/sda/queue/nr_requests
-echo 0 > /sys/block/sda/queue/iostats
+# Disable logging
+echo "0" > /proc/sys/debug/exception-trace
+echo "0 0 0 0" > /proc/sys/kernel/printk
+
+# Enable suspend to RAM
+echo "deep" > /sys/power/mem_sleep
 
 # Enable console_suspend to save power
 echo "Y" > /sys/module/printk/parameters/console_suspend
+
+# Input boost settings
+echo 100 > /sys/devices/system/cpu/cpu_boost/input_boost_ms
+
+# Runtime fs tuning
+echo 0 > /sys/block/sda/queue/iostats
+
+# Turn off scheduler boost at the end
+echo 0 > /proc/sys/kernel/sched_boost
 
