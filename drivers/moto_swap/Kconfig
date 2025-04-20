@@ -35,10 +35,6 @@ config HYBRIDSWAP_ZRAM_DEF_COMP_LZ4HC
 	bool "lz4hc"
 	depends on CRYPTO_LZ4HC
 
-config HYBRIDSWAP_ZRAM_DEF_COMP_LZ4KD
-	bool "lz4kd"
-	depends on CRYPTO_LZ4KD
-
 config HYBRIDSWAP_ZRAM_DEF_COMP_LZO
 	bool "lzo"
 	depends on CRYPTO_LZO
@@ -55,7 +51,6 @@ config HYBRIDSWAP_ZRAM_DEF_COMP
 	default "zstd" if HYBRIDSWAP_ZRAM_DEF_COMP_ZSTD
 	default "lz4" if HYBRIDSWAP_ZRAM_DEF_COMP_LZ4
 	default "lz4hc" if HYBRIDSWAP_ZRAM_DEF_COMP_LZ4HC
-	default "lz4kd" if HYBRIDSWAP_ZRAM_DEF_COMP_LZ4KD
 	default "lzo" if HYBRIDSWAP_ZRAM_DEF_COMP_LZO
 	default "842" if HYBRIDSWAP_ZRAM_DEF_COMP_842
 
