@@ -2,7 +2,7 @@
 config HYBRIDSWAP_ZRAM
 	tristate "Compressed RAM block device support"
 	depends on BLOCK && SYSFS && ZSMALLOC && CRYPTO && !ZRAM
-	depends on CRYPTO_LZO || CRYPTO_ZSTD || CRYPTO_LZ4 || CRYPTO_LZ4HC || CRYPTO_842
+	depends on CRYPTO_LZO || CRYPTO_ZSTD || CRYPTO_LZ4 || CRYPTO_LZ4K || CRYPTO_LZ4HC || CRYPTO_842
 	help
 	  Creates virtual block devices called /dev/zramX (X = 0, 1, ...).
 	  Pages written to these disks are compressed and stored in memory
@@ -31,6 +31,10 @@ config HYBRIDSWAP_ZRAM_DEF_COMP_LZ4
 	bool "lz4"
 	depends on CRYPTO_LZ4
 
+config HYBRIDSWAP_ZRAM_DEF_COMP_LZ4K
+	bool "lz4k"
+	depends on CRYPTO_LZ4K
+
 config HYBRIDSWAP_ZRAM_DEF_COMP_LZ4HC
 	bool "lz4hc"
 	depends on CRYPTO_LZ4HC
@@ -50,6 +54,7 @@ config HYBRIDSWAP_ZRAM_DEF_COMP
 	default "lzo-rle" if HYBRIDSWAP_ZRAM_DEF_COMP_LZORLE
 	default "zstd" if HYBRIDSWAP_ZRAM_DEF_COMP_ZSTD
 	default "lz4" if HYBRIDSWAP_ZRAM_DEF_COMP_LZ4
+	default "lz4k" if HYBRIDSWAP_ZRAM_DEF_COMP_LZ4K
 	default "lz4hc" if HYBRIDSWAP_ZRAM_DEF_COMP_LZ4HC
 	default "lzo" if HYBRIDSWAP_ZRAM_DEF_COMP_LZO
 	default "842" if HYBRIDSWAP_ZRAM_DEF_COMP_842
