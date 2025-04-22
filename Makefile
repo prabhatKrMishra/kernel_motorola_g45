@@ -762,8 +762,10 @@ KBUILD_CFLAGS += -Os
 endif
 
 ifdef CONFIG_CC_IS_CLANG
-KBUILD_CFLAGS += -mcpu=cortex-a55
-KBUILD_AFLAGS += -mcpu=cortex-a55
+KBUILD_CFLAGS += -march=armv8.2-a+crypto+fp16
+KBUILD_CFLAGS += -mcpu=cortex-a55 -mtune=cortex-a55
+KBUILD_AFLAGS += -march=armv8.2-a+crypto+fp16
+KBUILD_AFLAGS += -mcpu=cortex-a55 -mtune=cortex-a55
 else
 KBUILD_CFLAGS += -mcpu=cortex-a76.cortex-a55
 KBUILD_AFLAGS += -mcpu=cortex-a76.cortex-a55
