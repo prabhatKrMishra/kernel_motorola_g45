@@ -2,6 +2,8 @@
 EXTRA_CFLAGS += -Wall
 EXTRA_CFLAGS += -I$(srctree)/$(src)/../../include
 
+ccflags-y += $(call cc-option, -O2)
+
 obj-$(CONFIG_MOTO_MM) += moto_mm.o
 
 moto_mm-y := mm_main.o mm_sysfs.o mm_info.o
