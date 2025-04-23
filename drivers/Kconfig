@@ -242,6 +242,8 @@ source "drivers/mmi_relay/Kconfig"
 
 source "drivers/sensors/Kconfig"
 
+source "drivers/moto_mm/Kconfig"
+
 source "drivers/moto_swap/Kconfig"
 
 endmenu
