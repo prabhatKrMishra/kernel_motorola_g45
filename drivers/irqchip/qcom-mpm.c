@@ -332,6 +332,9 @@ static int msm_mpm_gpio_chip_alloc(struct irq_domain *domain,
 	if (ret)
 		return ret;
 
+	if (hwirq == GPIO_NO_WAKE_IRQ)
+		return irq_domain_disconnect_hierarchy(domain, virq);
+
 	irq_domain_set_hwirq_and_chip(domain, virq, hwirq,
 				&msm_mpm_gpio_chip, NULL);
 
