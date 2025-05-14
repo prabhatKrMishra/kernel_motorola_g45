@@ -3,6 +3,8 @@
 config EXFAT_FS
 	tristate "exFAT filesystem support"
 	select NLS
+	depends on MOTO_FOGOS_MODULES
+	default MOTO_FOGOS_MODULES
 	help
 	  This allows you to mount devices formatted with the exFAT file system.
 	  exFAT is typically used on SD-Cards or USB sticks.

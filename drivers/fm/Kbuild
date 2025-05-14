@@ -1,4 +1,4 @@
 # add -Wall to try to catch everything we can.
 EXTRA_CFLAGS += -Wall
 
-obj-m += fm_ctrl.o
+obj-$(CONFIG_MOTO_FOGOS_MODULES) += fm_ctrl.o

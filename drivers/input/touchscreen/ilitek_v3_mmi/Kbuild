@@ -1,11 +1,11 @@
 # add -Wall to try to catch everything we can.
 EXTRA_CFLAGS += -Wall
-EXTRA_CFLAGS += -I$(ANDROID_BUILD_TOP)/motorola/kernel/modules/include \
-		-I$(ANDROID_BUILD_TOP)/motorola/kernel/modules/drivers/input/touchscreen/ilitek_v3_mmi \
-		-I$(ANDROID_BUILD_TOP)/motorola/kernel/modules/drivers/input/touchscreen/ilitek_v3_mmi/firmware
+EXTRA_CFLAGS += -I$(srctree)/$(src)/../../../../include \
+		-I$(srctree)/$(src)/../../../../drivers/input/touchscreen/ilitek_v3_mmi \
+		-I$(srctree)/$(src)/../../../../drivers/input/touchscreen/ilitek_v3_mmi/firmware
 
 ifeq ($(filter m y, $(CONFIG_TOUCHSCREEN_ILITEK_CHIPSET)),)
-	obj-m += ilitek_v3_mmi.o
+	obj-$(CONFIG_MOTO_FOGOS_MODULES) += ilitek_v3_mmi.o
 endif
 
 ifneq ($(filter m y,$(CONFIG_INPUT_ILI_ENABLE_DOUBLE_TAP)),)

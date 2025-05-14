@@ -564,13 +564,8 @@ obj-$(CONFIG_SND_SOC_MAX98504)	+= snd-soc-max98504.o
 obj-$(CONFIG_SND_SOC_SIMPLE_AMPLIFIER)	+= snd-soc-simple-amplifier.o
 obj-$(CONFIG_SND_SOC_TPA6130A2)	+= snd-soc-tpa6130a2.o
 
-KERNEL_SRC ?= /lib/modules/$(shell uname -r)/build
-
-all:
-	$(MAKE) -C $(KERNEL_SRC) M=$(shell pwd) modules $(KBUILD_OPTIONS)
-
-modules_install:
-	$(MAKE) INSTALL_MOD_STRIP=1 -C $(KERNEL_SRC) M=$(shell pwd) modules_install
-
-clean:
-	$(MAKE) -C $(KERNEL_SRC) M=$(PWD) clean
+obj-$(CONFIG_SND_SOC_TAS2560) += snd-soc-tas2560.o
+obj-$(CONFIG_SND_SOC_TAS2560_ALGO) += snd-soc-tas2560_algo.o
+obj-$(CONFIG_SND_SOC_TAS2560_CALIB) += snd-soc-tas2560_calib.o
+obj-$(CONFIG_SND_SOC_SMARTPA_AW882xx) += snd-soc-snd_smartpa_aw882xx.o
+obj-$(CONFIG_SND_SOC_TFA9874) += snd-soc-tfa9874.o
