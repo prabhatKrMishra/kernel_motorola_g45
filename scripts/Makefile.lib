@@ -263,6 +263,9 @@ DTC_FLAGS += -Wnode_name_chars_strict \
 	-Wproperty_name_chars_strict
 endif
 
+# Silence all DTC warnings by default
+DTC_FLAGS += --quiet
+
 DTC_FLAGS += $(DTC_FLAGS_$(basetarget))
 
 # Generate an assembly file to wrap the output of the device tree compiler
