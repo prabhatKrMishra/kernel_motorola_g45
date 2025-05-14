@@ -151,3 +151,8 @@ arch/*/configs/vendor/*_defconfig
 
 # Custom
 KernelSU
+
+#
+#Ignoring Android.bp link file
+#
+Android.bp
