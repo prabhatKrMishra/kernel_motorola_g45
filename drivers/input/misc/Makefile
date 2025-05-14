@@ -88,3 +88,6 @@ obj-$(CONFIG_INPUT_XEN_KBDDEV_FRONTEND)	+= xen-kbdfront.o
 obj-$(CONFIG_INPUT_YEALINK)		+= yealink.o
 obj-$(CONFIG_INPUT_IDEAPAD_SLIDEBAR)	+= ideapad_slidebar.o
 
+obj-$(CONFIG_MOTO_FOGOS_MODULES) += fpc_fps_mmi/
+obj-$(CONFIG_MOTO_FOGOS_MODULES) += goodix_fod_mmi/
+

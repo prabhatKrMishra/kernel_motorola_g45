@@ -1,20 +1,9 @@
-HAVE_KERNEL_5_4 = $(shell test -d $(ANDROID_BUILD_TOP)/kernel/msm-5.4 && echo 1)
-HAVE_KERNEL_5_15 = $(shell test -d $(ANDROID_BUILD_TOP)/kernel_platform/gki/kernel/5.15 && echo 1)
-
-ifeq ($(HAVE_KERNEL_5_4),1)
 ZRAM_SRC = zram-5.4
 EXTRA_CFLAGS += -DCONFIG_ZRAM_5_4
-else ifeq ($(HAVE_KERNEL_5_15),1)
-ZRAM_SRC = zram-5.15
-EXTRA_CFLAGS += -DCONFIG_ZRAM_5_15
-else
-ZRAM_SRC = zram-5.10
-EXTRA_CFLAGS += -DCONFIG_ZRAM_5_10
-endif
 
 # add -Wall to try to catch everything we can.
 EXTRA_CFLAGS += -Wall
-EXTRA_CFLAGS += -I$(ANDROID_BUILD_TOP)/motorola/kernel/modules/include
+EXTRA_CFLAGS += -I$(srctree)/$(src)/../../include
 
 ifneq ($(filter m y,$(CONFIG_HYBRIDSWAP_ZRAM)),)
 EXTRA_CFLAGS += -DCONFIG_HYBRIDSWAP_ZRAM
@@ -47,4 +36,4 @@ endif
 moto_swap-objs += hybridswap/hybridswap_swapd.o
 moto_swap-objs += $(ZRAM_SRC)/zcomp.o
 
-obj-m += moto_swap.o
+obj-$(CONFIG_MOTO_FOGOS_MODULES) += moto_swap.o

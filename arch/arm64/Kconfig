@@ -2008,3 +2008,11 @@ config MOT_SECURE_CAMERA
 config MOT_USB_DEBUG_LOG
 	bool "For usb debug log in factiry SW"
 	default n
+
+config MOTO_FOGOS_MODULES
+	tristate "Select this option for building motorola modules"
+	default m if MODULES
+	default y if !MODULES
+	help
+	  Enable it to build required motorola modules and other modules.
+	  Select only as 'm' or 'y'.

@@ -144,4 +144,9 @@ config LEDS_TRIGGER_AUDIO
 	  the audio mute and mic-mute changes.
 	  If unsure, say N
 
+config LEDS_TRIGGER_SOL
+	tristate "Moto LED Trigger sol driver"
+	help
+	  Enable this to build ledtrig-sol driver.
+
 endif # LEDS_TRIGGERS

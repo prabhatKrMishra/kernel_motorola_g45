@@ -115,3 +115,7 @@ obj-$(CONFIG_TOUCHSCREEN_FTS)	+= focaltech_touch/
 obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_TCM)	+= synaptics_tcm/
 obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_DSX) += synaptics_dsx/
 obj-$(CONFIG_TOUCHSCREEN_NT36XXX)	+= nt36xxx/
+
+obj-$(CONFIG_MOTO_FOGOS_MODULES) += ilitek_v3_mmi/
+obj-$(CONFIG_MOTO_FOGOS_MODULES) += chipone_tddi_v2_mmi/
+

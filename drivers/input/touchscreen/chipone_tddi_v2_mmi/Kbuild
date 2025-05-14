@@ -1,7 +1,7 @@
 # add -Wall to try to catch everything we can.
 EXTRA_CFLAGS += -Wall
-EXTRA_CFLAGS += -I$(ANDROID_BUILD_TOP)/motorola/kernel/modules/include \
-		-I$(ANDROID_BUILD_TOP)/motorola/kernel/modules/drivers/input/touchscreen/chipone_tddi_fhd_mmi
+EXTRA_CFLAGS += -I$(srctree)/$(src)/../../../../include \
+		-I$(srctree)/$(src)/../chipone_tddi_fhd_mmi
 ifneq ($(filter m y,$(CONFIG_CHIPONE_ESD)),)
 EXTRA_CFLAGS += -DCONFIG_CTS_ESD_PROTECTION
 endif
@@ -50,7 +50,7 @@ ifneq ($(filter m y,$(CONFIG_CHIPONE_CHECK_DEVICE_BOOTMODE)),)
 endif
 
 #obj-$(CONFIG_TOUCHSCREEN_CHIPONE) += chipone-tddi.o
-obj-m += chipone_tddi_v2_mmi.o
+obj-$(CONFIG_MOTO_FOGOS_MODULES) += chipone_tddi_v2_mmi.o
 
 chipone_tddi_v2_mmi-objs := cts_driver.o
 chipone_tddi_v2_mmi-objs += cts_core.o
