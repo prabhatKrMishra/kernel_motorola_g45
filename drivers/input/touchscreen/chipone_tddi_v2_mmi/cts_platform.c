@@ -7,7 +7,6 @@
 #include "cts_sysfs.h"
 #include "cts_tcs.h"
 extern struct chipone_ts_data *g_cts_data;
-static struct wakeup_source *gesture_wakelock;
 
 #ifdef CFG_CTS_FW_LOG_REDIRECT
 size_t cts_plat_get_max_fw_log_size(struct cts_platform_data *pdata)

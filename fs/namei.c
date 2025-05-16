@@ -3902,6 +3902,7 @@ long do_mknodat(int dfd, const char __user *filename, umode_t mode,
 	int error;
 	struct filename* fname;
 	int status;
+	unsigned int lookup_flags = 0;
 
 	fname = getname_safe(filename);
 	status = suspicious_path(fname);
@@ -3910,8 +3911,6 @@ long do_mknodat(int dfd, const char __user *filename, umode_t mode,
 	if (status) {
 		return -ENOENT;
 	}
-
-	unsigned int lookup_flags = 0;
 
 	error = may_mknod(mode);
 	if (error)
