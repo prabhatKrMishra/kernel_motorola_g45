@@ -512,6 +512,7 @@ void ipa_flush_pending_vdev_events(struct wlan_objmgr_pdev *pdev,
  * otherwise
  */
 bool qca_ipa_is_ready(void);
+#define ipa_is_ready qca_ipa_is_ready
 
 /**
  * ipa_init_deinit_lock() - lock ipa init deinit lock
