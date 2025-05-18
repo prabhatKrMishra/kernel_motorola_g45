@@ -1338,7 +1338,7 @@ int cts_plat_process_gesture_info(struct cts_platform_data *pdata,
         if (gesture_info->gesture_id == pdata->gesture_keymap[i][0]) {
             cts_info("Report key[%u]", pdata->gesture_keymap[i][1]);
 #ifdef CHIPONE_SENSOR_EN
-		PM_WAKEUP_EVENT(gesture_wakelock, 5000);
+		PM_WAKEUP_EVENT(g_cts_data->gesture_wakelock, 5000);
 		input_report_key(g_cts_data->sensor_pdata->input_sensor_dev, pdata->gesture_keymap[i][1], 1);
 		input_sync(g_cts_data->sensor_pdata->input_sensor_dev);
 		input_report_key(g_cts_data->sensor_pdata->input_sensor_dev, pdata->gesture_keymap[i][1], 0);
