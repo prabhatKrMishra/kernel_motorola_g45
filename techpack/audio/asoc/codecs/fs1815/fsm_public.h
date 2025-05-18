@@ -231,7 +231,7 @@ void fs1815_ops(fsm_dev_t *fsm_dev);
 #define snd_soc_add_codec_controls snd_soc_add_component_controls
 #define snd_soc_codec_get_drvdata  snd_soc_component_get_drvdata
 #endif
-void fsm_add_codec_controls(struct snd_soc_codec *codec);
+int fsm_add_codec_controls(struct snd_soc_codec *codec);
 void fsm_add_card_controls(struct snd_soc_card *card);
 
 #ifdef __cplusplus

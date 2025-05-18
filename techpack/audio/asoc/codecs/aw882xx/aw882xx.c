@@ -2098,7 +2098,7 @@ static int aw882xx_parse_dt(struct device *dev, struct aw882xx *aw882xx,
 	return 0;
 }
 
-int aw882xx_hw_reset(struct aw882xx *aw882xx)
+int aw882xx_hw_reset_x(struct aw882xx *aw882xx)
 {
 	pr_info("%s: enter\n", __func__);
 
@@ -3527,7 +3527,7 @@ static int aw882xx_i2c_probe(struct i2c_client *i2c,
 	}
 
 	/* hardware reset */
-	aw882xx_hw_reset(aw882xx);
+	aw882xx_hw_reset_x(aw882xx);
 
 	/* aw882xx chip id */
 	ret = aw882xx_read_chipid(aw882xx);
