@@ -1694,9 +1694,9 @@ const struct snd_kcontrol_new fsm_snd_controls[] =
 			fsm_adsp_enable_get, fsm_adsp_enable_put),
 };
 
-void fsm_add_codec_controls(struct snd_soc_codec *codec)
+int fsm_add_codec_controls(struct snd_soc_codec *codec)
 {
-	snd_soc_add_codec_controls(codec, fsm_snd_controls,
+	return snd_soc_add_codec_controls(codec, fsm_snd_controls,
 				ARRAY_SIZE(fsm_snd_controls));
 }
 EXPORT_SYMBOL_GPL(fsm_add_codec_controls);

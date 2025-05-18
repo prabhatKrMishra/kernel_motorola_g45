@@ -41,6 +41,9 @@
 #include <dt-bindings/sound/audio-codec-port-types.h>
 #include "holi-port-config.h"
 #include "msm_holi_dailink.h"
+#ifdef CONFIG_SND_SOC_FS1815
+#include "codecs/fs1815/fsm_public.h"
+#endif
 
 #define DRV_NAME "holi-asoc-snd"
 #define __CHIPSET__ "HOLI "
@@ -48,10 +51,6 @@
 
 #ifdef CONFIG_SND_SOC_AW87XXX
 	extern int aw87xxx_add_codec_controls(void *codec);
-#endif
-
-#ifdef CONFIG_SND_SOC_FS1815
-	extern int fsm_add_codec_controls(struct snd_soc_component *codec);
 #endif
 
 #define SAMPLING_RATE_8KHZ      8000
