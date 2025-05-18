@@ -542,7 +542,7 @@ struct smb_mmi_charger {
 #define AICL_RANGE2_MIN_MV		5600
 #define AICL_RANGE2_STEP_DELTA_MV	200
 #define AICL_RANGE2_OFFSET		16
-int smblib_get_aicl_cont_threshold(struct smb_mmi_chg_param *param, u8 val_raw)
+int mmi_smblib_get_aicl_cont_threshold(struct smb_mmi_chg_param *param, u8 val_raw)
 {
 	int base = param->min_u;
 	u8 reg = val_raw;
@@ -558,7 +558,7 @@ int smblib_get_aicl_cont_threshold(struct smb_mmi_chg_param *param, u8 val_raw)
 	return base + (reg * step);
 }
 
-int smblib_set_aicl_cont_threshold(struct smb_mmi_chg_param *param,
+int mmi_smblib_set_aicl_cont_threshold(struct smb_mmi_chg_param *param,
 				int val_u, u8 *val_raw)
 {
 	int base = param->min_u;
@@ -607,7 +607,7 @@ static const struct smb_buck_boost_freq chg_freq_list[] = {
 	},
 };
 
-int smblib_set_chg_freq(struct smb_mmi_chg_param *param,
+int mmi_smblib_set_chg_freq(struct smb_mmi_chg_param *param,
 				int val_u, u8 *val_raw)
 {
 	u8 i;
@@ -666,8 +666,8 @@ static struct smb_mmi_params smb5_pm8150b_params = {
 		.min_u  = 4000,
 		.max_u  = 11800,
 		.step_u = 100,
-		.get_proc = smblib_get_aicl_cont_threshold,
-		.set_proc = smblib_set_aicl_cont_threshold,
+		.get_proc = mmi_smblib_get_aicl_cont_threshold,
+		.set_proc = mmi_smblib_set_aicl_cont_threshold,
 	},
 	.freq_switcher		= {
 		.name	= "switching frequency",
@@ -675,7 +675,7 @@ static struct smb_mmi_params smb5_pm8150b_params = {
 		.min_u	= 600,
 		.max_u	= 1200,
 		.step_u	= 400,
-		.set_proc = smblib_set_chg_freq,
+		.set_proc = mmi_smblib_set_chg_freq,
 	},
 };
 
@@ -715,7 +715,7 @@ static struct smb_mmi_params smb5_pmi632_params = {
 		.min_u	= 600,
 		.max_u	= 1200,
 		.step_u	= 400,
-		.set_proc = smblib_set_chg_freq,
+		.set_proc = mmi_smblib_set_chg_freq,
 	},
 };
 
@@ -767,7 +767,7 @@ static const char * const smb_mmi_ext_iio_chan_name[] = {
 	[SMB5_QG_SOH] = "soh",
 };
 
-bool is_chan_valid(struct smb_mmi_charger *chip,
+bool mmi_is_chan_valid(struct smb_mmi_charger *chip,
 		enum smb_mmi_ext_iio_channels chan)
 {
 	int rc;
@@ -797,7 +797,7 @@ int smb_mmi_read_iio_chan(struct smb_mmi_charger *chip,
 {
 	int rc;
 
-	if (is_chan_valid(chip, chan)) {
+	if (mmi_is_chan_valid(chip, chan)) {
 		rc = iio_read_channel_processed(
 				chip->ext_iio_chans[chan], val);
 		return (rc < 0) ? rc : 0;
@@ -809,7 +809,7 @@ int smb_mmi_read_iio_chan(struct smb_mmi_charger *chip,
 int smb_mmi_write_iio_chan(struct smb_mmi_charger *chip,
 	enum smb_mmi_ext_iio_channels chan, int val)
 {
-	if (is_chan_valid(chip, chan))
+	if (mmi_is_chan_valid(chip, chan))
 		return iio_write_channel_raw(chip->ext_iio_chans[chan],
 						val);
 
@@ -1316,7 +1316,7 @@ static DEVICE_ATTR(force_chg_auto_enable, 0664,
 		force_chg_auto_enable_show,
 		force_chg_auto_enable_store);
 
-int smblib_set_charge_param(struct smb_mmi_charger *chg,
+int mmi_smblib_set_charge_param(struct smb_mmi_charger *chg,
 			    struct smb_mmi_chg_param *param, int val_u)
 {
 	int rc = 0;
@@ -1352,7 +1352,7 @@ int smblib_set_charge_param(struct smb_mmi_charger *chg,
 	return rc;
 }
 
-int smblib_get_charge_param(struct smb_mmi_charger *chg,
+int mmi_smblib_get_charge_param(struct smb_mmi_charger *chg,
 			    struct smb_mmi_chg_param *param, int *val_u)
 {
 	int rc = 0;
@@ -1418,7 +1418,7 @@ static ssize_t force_chg_ibatt_show(struct device *dev,
 		goto end;
 	}
 
-	ret = smblib_get_charge_param(mmi_chip, &mmi_chip->param.fcc, &state);
+	ret = mmi_smblib_get_charge_param(mmi_chip, &mmi_chip->param.fcc, &state);
 	if (ret < 0) {
 		mmi_err(mmi_chip, "Factory Couldn't get master fcc rc=%d\n", (int)ret);
 		return ret;
@@ -1493,7 +1493,7 @@ static ssize_t force_chg_iusb_show(struct device *dev,
 		goto end;
 	}
 
-	r = smblib_get_charge_param(mmi_chip, &mmi_chip->param.usb_icl, &state);
+	r = mmi_smblib_get_charge_param(mmi_chip, &mmi_chip->param.usb_icl, &state);
 	if (r < 0) {
 		mmi_err(mmi_chip, "Factory Couldn't get usb_icl rc=%d\n", (int)r);
 		return r;
@@ -1527,7 +1527,7 @@ static ssize_t force_chg_idc_store(struct device *dev,
 		return -ENODEV;
 	}
 	dc_curr *= 1000; /* Convert to uA */
-	r = smblib_set_charge_param(mmi_chip, &mmi_chip->param.dc_icl, dc_curr);
+	r = mmi_smblib_set_charge_param(mmi_chip, &mmi_chip->param.dc_icl, dc_curr);
 	if (r < 0) {
 		mmi_err(mmi_chip, "Factory Couldn't set dc icl = %d rc=%d\n",
 		       (int)dc_curr, (int)r);
@@ -1552,7 +1552,7 @@ static ssize_t force_chg_idc_show(struct device *dev,
 		goto end;
 	}
 
-	r = smblib_get_charge_param(mmi_chip, &mmi_chip->param.dc_icl, &state);
+	r = mmi_smblib_get_charge_param(mmi_chip, &mmi_chip->param.dc_icl, &state);
 	if (r < 0) {
 		mmi_err(mmi_chip, "Factory Couldn't get dc_icl rc=%d\n", (int)r);
 		return r;
@@ -2250,7 +2250,7 @@ static int mmi_increase_vbus_power(struct smb_mmi_charger *chg, int cur_mv)
 			mmi_info(chg, "pulse count = %d, cur_mv = %d\n", pulse_cnt, cur_mv);
 		}
 
-		rc = smblib_set_charge_param(chg, &chg->param.aicl_cont_threshold,
+		rc = mmi_smblib_set_charge_param(chg, &chg->param.aicl_cont_threshold,
 					     HVDCP_VOLTAGE_NOM - 1000);
 		if (rc < 0) {
 			mmi_err(chg, "Couldn't set aicl cont threshold to 9V rc=%d\n", rc);
@@ -2389,7 +2389,7 @@ static int smblib_set_opt_switcher_freq(struct smb_mmi_charger *chg, int fsw_khz
 {
 	int rc = 0;
 
-	rc = smblib_set_charge_param(chg, &chg->param.freq_switcher, fsw_khz);
+	rc = mmi_smblib_set_charge_param(chg, &chg->param.freq_switcher, fsw_khz);
 	if (rc < 0)
 		mmi_err(chg, "Error in setting freq_buck rc=%d\n", rc);
 
@@ -5460,7 +5460,7 @@ static int smb_mmi_probe(struct platform_device *pdev)
 	chip->charging_limit_modes = CHARGING_LIMIT_UNKNOWN;
 
 	if (chip->dc_cl_ma >= 0) {
-		rc = smblib_set_charge_param(chip, &chip->param.dc_icl,
+		rc = mmi_smblib_set_charge_param(chip, &chip->param.dc_icl,
 					chip->dc_cl_ma * 1000);
 		if (rc)
 			mmi_err(chip, "Failed to set DC ICL %d\n",
@@ -5579,7 +5579,7 @@ static int smb_mmi_probe(struct platform_device *pdev)
 		}
 
 		/* Some Cables need a more forced approach */
-		rc = smblib_set_charge_param(chip, &chip->param.usb_icl,
+		rc = mmi_smblib_set_charge_param(chip, &chip->param.usb_icl,
 					     3000000);
 		if (rc < 0)
 			mmi_err(chip,
