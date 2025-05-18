@@ -3,6 +3,13 @@
 # provided that proper credit is given to the original author.
 # Unauthorized claiming of authorship is not allowed.
 
+# Setup runtime cpusets
+echo "0-7" > /dev/cpuset/top-app/cpus
+echo "0-6" > /dev/cpuset/foreground/cpus
+echo "4-5" > /dev/cpuset/background/cpus
+echo "2-5" > /dev/cpuset/system-background/cpus
+echo "2-5" > /dev/cpuset/restricted/cpus
+
 # Enable tcp_low_latency for even faster ACKs
 echo 1 > /proc/sys/net/ipv4/tcp_low_latency
 
@@ -14,6 +21,32 @@ echo 1 > /proc/sys/net/ipv4/tcp_slow_start_after_idle
 
 # Use the "best-effort" scheduler for the network
 echo 1 > /proc/sys/net/core/netdev_budget
+
+# Set default and maximum receive buffer sizes
+echo 1310720 > /proc/sys/net/core/rmem_default
+echo 8388608 > /proc/sys/net/core/rmem_max
+
+# Set default and maximum send buffer sizes
+echo 327680 > /proc/sys/net/core/wmem_default
+echo 8388608 > /proc/sys/net/core/wmem_max
+
+# Set maximum size for ancillary data and options
+echo 20480 > /proc/sys/net/core/optmem_max
+
+# Increase network device input backlog
+echo 10000 > /proc/sys/net/core/netdev_max_backlog
+
+# Set TCP receive buffer sizes (min default max)
+echo "2097152 4194304 8388608" > /proc/sys/net/ipv4/tcp_rmem
+
+# Set TCP send buffer sizes (min default max)
+echo "262144 524288 8388608" > /proc/sys/net/ipv4/tcp_wmem
+
+# Set total TCP memory thresholds (low pressure high - in pages)
+echo "44259 59012 88518" > /proc/sys/net/ipv4/tcp_mem
+
+# Set total UDP memory thresholds (low pressure high - in pages)
+echo "88518 118025 177036" > /proc/sys/net/ipv4/udp_mem
 
 # Set RPS (Receive Packet Steering) for each rmnet interface
 echo fe > /sys/class/net/rmnet0/queues/rx-0/rps_cpus
@@ -58,6 +91,12 @@ echo "Y" > /sys/module/printk/parameters/console_suspend
 
 # Input boost settings
 echo 100 > /sys/devices/system/cpu/cpu_boost/input_boost_ms
+
+# Enable KSM
+echo 1 > /sys/kernel/mm/ksm/run
+
+# Increase the maximum number of I/O requests
+echo 128 > /sys/block/sda/queue/nr_requests
 
 # Runtime fs tuning
 echo 0 > /sys/block/sda/queue/iostats
