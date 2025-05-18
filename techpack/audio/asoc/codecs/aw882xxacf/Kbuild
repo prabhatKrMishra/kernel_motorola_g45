@@ -22,4 +22,4 @@ aw882xx_acf-objs += aw_dsp.o
 aw882xx_acf-objs += aw_init.o
 aw882xx_acf-objs += aw_monitor.o
 
-obj-m += aw882xx_acf.o
+obj-y += aw882xx_acf.o
