@@ -91,7 +91,7 @@ extern unsigned int storage_mfrid;
 #define IS_MICRON_DEVICE(mfrid)    (UFS_VENDOR_MICRON == (mfrid))
 #if defined(CONFIG_SCSI_SKHPB) || defined(CONFIG_UFSHPB)
 extern unsigned int ram_size;
-#define IS_RAM_SIZE_GREATER_THAN_4G(ram_size) (ram_size > 4)
+#define IS_RAM_SIZE_GREATER_THAN_4G(ram_size) (1)
 #endif
 struct ufs_hba;
 
