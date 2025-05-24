@@ -5,10 +5,10 @@
 
 # Setup runtime cpusets
 echo "0-7" > /dev/cpuset/top-app/cpus
-echo "0-6" > /dev/cpuset/foreground/cpus
+echo "2-7" > /dev/cpuset/foreground/cpus
 echo "4-5" > /dev/cpuset/background/cpus
-echo "2-5" > /dev/cpuset/system-background/cpus
-echo "2-5" > /dev/cpuset/restricted/cpus
+echo "0-3" > /dev/cpuset/system-background/cpus
+echo "0-3" > /dev/cpuset/restricted/cpus
 
 # Enable tcp_low_latency for even faster ACKs
 echo 1 > /proc/sys/net/ipv4/tcp_low_latency
@@ -67,11 +67,18 @@ echo "schedutil" > /sys/devices/system/cpu/cpufreq/policy6/scaling_governor
 echo 500 > /sys/devices/system/cpu/cpufreq/policy6/schedutil/up_rate_limit_us
 echo 1000 > /sys/devices/system/cpu/cpufreq/policy6/schedutil/down_rate_limit_us
 
-# Memory optimization
+# Use 10ms polling_interval for silver and gold latfloor
+echo 50 > /sys/devices/platform/soc/soc:qcom,cpu-cpu-ddr-bw/devfreq/soc:qcom,cpu-cpu-ddr-bw/polling_interval
+echo 10 > /sys/devices/platform/soc/soc:qcom,cpu0-cpu-ddr-lat/devfreq/soc:qcom,cpu0-cpu-ddr-lat/polling_interval
+echo 10 > /sys/devices/platform/soc/soc:qcom,cpu6-cpu-ddr-lat/devfreq/soc:qcom,cpu6-cpu-ddr-lat/polling_interval
+echo 10 > /sys/devices/platform/soc/soc:qcom,cpu0-cpu-ddr-latfloor/devfreq/soc:qcom,cpu0-cpu-ddr-latfloor/polling_interval
+echo 10 > /sys/devices/platform/soc/soc:qcom,cpu6-cpu-ddr-latfloor/devfreq/soc:qcom,cpu6-cpu-ddr-latfloor/polling_interval
+
+# VM Tuning
 echo 5 > /proc/sys/vm/dirty_ratio
-echo 3 > /proc/sys/vm/dirty_background_ratio
+echo 2 > /proc/sys/vm/dirty_background_ratio
 echo 500 > /proc/sys/vm/dirty_writeback_centisecs
-echo 200 > /proc/sys/vm/dirty_expire_centisecs
+echo 300 > /proc/sys/vm/dirty_expire_centisecs
 
 # Disable Core control on silver cluster
 echo 0 > /sys/devices/system/cpu/cpu0/core_ctl/enable
@@ -82,6 +89,9 @@ echo 0 > /proc/sys/kernel/sched_schedstats
 # Disable logging
 echo "0" > /proc/sys/debug/exception-trace
 echo "0 0 0 0" > /proc/sys/kernel/printk
+
+# Enable powersaving
+echo 0 > /sys/module/lpm_levels/parameters/sleep_disabled
 
 # Enable suspend to RAM
 echo "deep" > /sys/power/mem_sleep
