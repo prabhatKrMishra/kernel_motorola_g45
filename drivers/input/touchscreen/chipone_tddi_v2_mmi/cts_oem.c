@@ -635,7 +635,7 @@ static void dump_tsdata_to_seq_file(struct seq_file *m,
 
     for (r = 0; r < rows; r++) {
         char linebuf[256];
-        int len;
+        int __maybe_unused len;
 
         len = dump_tsdata_row_to_buffer(linebuf, sizeof(linebuf),
             data, cols, NULL, "\n", ',');
@@ -727,7 +727,7 @@ static void dump_comp_cap_to_seq_file(struct seq_file *m,
 
     for (r = 0; r < rows; r++) {
         char linebuf[256];
-        int len;
+        int __maybe_unused len;
 
         len = dump_comp_cap_row_to_buffer(linebuf, sizeof(linebuf),
             data, cols, NULL, "\n", ',');
@@ -1341,10 +1341,10 @@ static int cts_factory_test_show(struct seq_file *m, void *v)
     const struct firmware *limit_fw = NULL;
     struct cts_limit limit;
     char header[7] = {'C', 'h', 'i', 'p', 'o', 'n', 'e'};
-    int normal_rawdata_frames;
+    int __maybe_unused normal_rawdata_frames;
     int normal_rawdata_min;
     int normal_rawdata_max;
-    int normal_noise_frames;
+    int __maybe_unused normal_noise_frames;
     int normal_noise_max;
     int normal_open_min;
     int normal_short_min;
