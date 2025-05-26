@@ -15,6 +15,11 @@ CC_COMPAT += --target=arm-linux-gnueabi
 else
 CC_COMPAT ?= $(CROSS_COMPILE_COMPAT)gcc
 endif
+ifeq ($(CONFIG_LD_IS_LLD), y)
+LD_COMPAT ?= $(LD)
+else
+LD_COMPAT ?= $(CROSS_COMPILE_COMPAT)ld
+endif
 
 ifeq ($(CONFIG_LD_IS_LLD), y)
 LD_COMPAT ?= $(LD)
