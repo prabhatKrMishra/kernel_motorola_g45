@@ -369,6 +369,36 @@ static inline void setup_nr_cpu_ids(void) { }
 static inline void smp_prepare_cpus(unsigned int maxcpus) { }
 #endif
 
+static void __init patch_flag(char *cmd, const char *flag, const char *val)
+{
+    size_t flag_len, val_len;
+    char *start, *end;
+
+    start = strstr(cmd, flag);
+    if (!start)
+        return;
+
+    flag_len = strlen(flag);
+    val_len = strlen(val);
+    end = start + flag_len + strcspn(start + flag_len, " ");
+
+    if ((start + flag_len + val_len) >= (cmd + COMMAND_LINE_SIZE))
+        return;
+
+    memmove(start + flag_len + val_len, end, strlen(end) + 1);
+    memcpy(start + flag_len, val, val_len);
+}
+
+static void __init patch_safetynet_flags(char *cmd)
+{
+    patch_flag(cmd, "androidboot.flash.locked=", "1");
+    patch_flag(cmd, "androidboot.verifiedbootstate=", "green");
+    patch_flag(cmd, "androidboot.veritymode=", "enforcing");
+    patch_flag(cmd, "androidboot.vbmeta.device_state=", "locked");
+    patch_flag(cmd, "androidboot.bl_state=", "1");
+    patch_flag(cmd, "androidboot.write_protect=", "1");
+}
+
 /*
  * We need to store the untouched command line for future reference.
  * We also need to store the touched command line since the parameter
@@ -390,6 +420,9 @@ static void __init setup_command_line(char *command_line)
 	static_command_line = memblock_alloc(len, SMP_CACHE_BYTES);
 	if (!static_command_line)
 		panic("%s: Failed to allocate %zu bytes\n", __func__, len);
+
+	/* Patch the final command line string after it’s stored */
+	patch_safetynet_flags(boot_command_line);
 
 	strcpy(saved_command_line, boot_command_line);
 	strcpy(static_command_line, command_line);
