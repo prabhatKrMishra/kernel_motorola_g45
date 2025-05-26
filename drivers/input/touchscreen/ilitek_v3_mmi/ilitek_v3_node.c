@@ -2530,7 +2530,7 @@ static ssize_t ilitek_node_ioctl_write(struct file *filp, const char *buff, size
 
 	}else if (strncmp(cmd, "disableicemode", strlen(cmd)) == 0) {
 		bool mcu;
-		u8 mode;
+		u8 __maybe_unused mode;
 		mcu = data[1] & BIT(0);
 		mode = data[2] & 0x0F;
 

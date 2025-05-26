@@ -1003,7 +1003,7 @@ int fsm_parse_preset(const void *data, uint32_t size)
 int fsm_swap_channel(fsm_dev_t *fsm_dev, int next_angle)
 {
 	uint16_t left_chn;
-	uint8_t i2sctrl;
+	uint8_t __maybe_unused i2sctrl;
 	uint16_t chs12;
 	int ret = 0;
 
@@ -1708,7 +1708,7 @@ void fsm_add_card_controls(struct snd_soc_card *card)
 }
 EXPORT_SYMBOL_GPL(fsm_add_card_controls);
 
-static int fsm_check_scene_status()
+static int fsm_check_scene_status(void)
 {
 	fsm_config_t *cfg = fsm_get_config();
 	if(cfg->speaker_on && cfg->next_scene == FSM_SCENE_MUSIC){

@@ -518,7 +518,7 @@ static int ilitek_fw_calc_file_crc(u8 *pfw)
 
 static int ilitek_tddi_fw_update_block_info(u8 *pfw)
 {
-	u32 ges_area_section = 0, ges_info_addr = 0, ges_fw_start = 0, ges_fw_end = 0;
+	u32 __maybe_unused ges_area_section = 0, ges_info_addr = 0, ges_fw_start = 0, ges_fw_end = 0;
 	u32 ap_end = 0, ap_len = 0;
 	u32 fw_info_addr = 0, fw_mp_ver_addr = 0;
 

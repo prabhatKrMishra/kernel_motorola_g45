@@ -451,7 +451,7 @@ int cts_plat_spi_read_delay_idle(struct cts_platform_data *pdata, u8 dev_addr,
 
 int cts_plat_is_normal_mode(struct cts_platform_data *pdata)
 {
-    struct chipone_ts_data *cts_data;
+    struct chipone_ts_data __maybe_unused *cts_data;
     u16 fwid;
 /*
     u8 tx_buf[4] = { 0 };
