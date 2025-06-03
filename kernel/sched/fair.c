@@ -7761,17 +7761,17 @@ static void detach_entity_cfs_rq(struct sched_entity *se);
  */
 static void migrate_task_rq_fair(struct task_struct *p, int new_cpu)
 {
+	struct rq *rq;
 	struct sched_entity *se = &p->se;
 
-	if (!task_on_rq_migrating(p)) {
-		remove_entity_load_avg(se);
+	rq = task_rq(p);
 
-		/*
-		 * In case of TASK_ON_RQ_MIGRATING we in fact hold the 'old'
-		 * rq->lock and can modify state directly.
-		 */
-		lockdep_assert_held(&task_rq(p)->lock);
+	if (!task_on_rq_migrating(p)) {
+		raw_spin_lock(&rq->lock);
+		update_rq_clock(rq);
+		remove_entity_load_avg(se);
 		detach_entity_cfs_rq(&p->se);
+		raw_spin_unlock(&rq->lock);
 
 	} else {
 		/*
