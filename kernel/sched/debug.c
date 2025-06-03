@@ -177,9 +177,6 @@ static __init int sched_init_debug(void)
 	debugfs_create_bool("sched_debug", 0644, NULL,
 			&sched_debug_enabled);
 
-	debugfs_create_u32("idle_min_granularity_ns", 0644, NULL,
-			&sysctl_sched_idle_min_granularity);
-
 	return 0;
 }
 late_initcall(sched_init_debug);
@@ -754,10 +751,7 @@ static void sched_debug_header(struct seq_file *m)
 	SEQ_printf(m, "  .%-40s: %Ld\n", #x, (long long)(x))
 #define PN(x) \
 	SEQ_printf(m, "  .%-40s: %Ld.%06ld\n", #x, SPLIT_NS(x))
-	PN(sysctl_sched_latency);
 	PN(sysctl_sched_min_granularity);
-	PN(sysctl_sched_idle_min_granularity);
-	PN(sysctl_sched_wakeup_granularity);
 	P(sysctl_sched_child_runs_first);
 	P(sysctl_sched_features);
 #ifdef CONFIG_SCHED_WALT
