@@ -7952,21 +7952,21 @@ again:
 				update_curr(cfs_rq);
 			else
 				curr = NULL;
+		}
 
-			/*
-			 * This call to check_cfs_rq_runtime() will do the
-			 * throttle and dequeue its entity in the parent(s).
-			 * Therefore the nr_running test will indeed
-			 * be correct.
-			 */
-			if (unlikely(check_cfs_rq_runtime(cfs_rq))) {
-				cfs_rq = &rq->cfs;
+		/*
+		 * This call to check_cfs_rq_runtime() will do the
+		 * throttle and dequeue its entity in the parent(s).
+		 * Therefore the nr_running test will indeed
+		 * be correct.
+		*/
+		if (unlikely(check_cfs_rq_runtime(cfs_rq))) {
+			cfs_rq = &rq->cfs;
 
-				if (!cfs_rq->nr_running)
-					goto idle;
+			if (!cfs_rq->nr_running)
+				goto idle;
 
-				goto simple;
-			}
+			goto simple;
 		}
 
 		se = pick_next_entity(cfs_rq, curr);
