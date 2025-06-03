@@ -634,6 +634,9 @@ struct cfs_rq {
 	unsigned int		idle_nr_running;   /* SCHED_IDLE */
 	unsigned int		idle_h_nr_running; /* SCHED_IDLE */
 
+	s64			avg_vruntime;
+	u64			avg_load;
+
 	u64			exec_clock;
 	u64			min_vruntime;
 #ifndef CONFIG_64BIT
@@ -3437,3 +3440,6 @@ static inline void walt_irq_work_queue(struct irq_work *work)
 	irq_work_queue(work);
 }
 #endif
+
+extern u64 avg_vruntime(struct cfs_rq *cfs_rq);
+
