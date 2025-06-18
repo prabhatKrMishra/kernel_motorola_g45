@@ -42,8 +42,27 @@ fi
 export TARGET_BUILD_VARIANT=user
 export KERNEL_BUILD_MODE=user
 export ARCH=arm64
+export SUBARCH=arm64
+export HEADER_ARCH=arm64
 
-BUILD_CONFIG=$BUILD_CONFIG VARIANT=$BUILD_VARIANT LTO=$CLANG_LTO_TYPE TARGET_PRODUCT=$BUILD_TARGET_PRODUCT BUILD_KERNEL=1 build/build.sh -j$(($(nproc) - 1))
+# AOSP clang v20.0.0
+export LLVM_DIR=$ROOT_PATH/prebuilts-master/clang/host/linux-x86/clang-r547379/bin
+
+BUILD_CONFIG=$BUILD_CONFIG VARIANT=$BUILD_VARIANT LTO=$CLANG_LTO_TYPE TARGET_PRODUCT=$BUILD_TARGET_PRODUCT BUILD_KERNEL=1 build/build.sh \
+  CC=${LLVM_DIR}/clang \
+  LD=${LLVM_DIR}/ld.lld \
+  AR=${LLVM_DIR}/llvm-ar \
+  NM=${LLVM_DIR}/llvm-nm \
+  AS=${LLVM_DIR}/llvm-as \
+  OBJCOPY=${LLVM_DIR}/llvm-objcopy \
+  OBJDUMP=${LLVM_DIR}/llvm-objdump \
+  READELF=${LLVM_DIR}/llvm-readelf \
+  OBJSIZE=${LLVM_DIR}/llvm-size \
+  STRIP=${LLVM_DIR}/llvm-strip \
+  LLVM_NM=${LLVM_DIR}/llvm-nm \
+  LLVM=1 \
+  LLVM_IAS=1 \
+  -j$(($(nproc) - 1))
 
 copy_binaries() {
 	echo " Copying kernel binaries"
