@@ -73,8 +73,9 @@ echo 2 > /proc/sys/vm/dirty_background_ratio
 echo 500 > /proc/sys/vm/dirty_writeback_centisecs
 echo 300 > /proc/sys/vm/dirty_expire_centisecs
 
-# Disable Core control on silver cluster
+# Disable Core control on both clusters
 echo 0 > /sys/devices/system/cpu/cpu0/core_ctl/enable
+echo 0 > /sys/devices/system/cpu/cpu6/core_ctl/enable
 
 # Ultra-Low-Latency
 echo 0 > /proc/sys/kernel/sched_schedstats
@@ -99,6 +100,7 @@ echo 100 > /sys/devices/system/cpu/cpu_boost/input_boost_ms
 echo 1 > /sys/kernel/mm/ksm/run
 
 # Runtime fs tuning
+echo "mq-deadline" > /sys/block/sda/queue/scheduler
 echo 0 > /sys/block/sda/queue/iostats
 
 # Turn off scheduler boost at the end
