@@ -99,8 +99,16 @@ echo 100 > /sys/devices/system/cpu/cpu_boost/input_boost_ms
 # Enable KSM
 echo 1 > /sys/kernel/mm/ksm/run
 
+# Set the io-scheduler to ssg on all mq support devices
+echo "ssg" > /sys/block/sda/queue/scheduler
+echo "ssg" > /sys/block/sdb/queue/scheduler
+echo "ssg" > /sys/block/sdc/queue/scheduler
+echo "ssg" > /sys/block/sdd/queue/scheduler
+echo "ssg" > /sys/block/sde/queue/scheduler
+echo "ssg" > /sys/block/sdf/queue/scheduler
+echo "ssg" > /sys/class/block/mmcblk1/queue/scheduler
+
 # Runtime fs tuning
-echo "mq-deadline" > /sys/block/sda/queue/scheduler
 echo 0 > /sys/block/sda/queue/iostats
 
 # Turn off scheduler boost at the end
