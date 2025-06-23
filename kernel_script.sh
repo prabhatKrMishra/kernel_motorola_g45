@@ -12,18 +12,6 @@ echo "2-5" > /dev/cpuset/restricted/cpus
 echo "0-7" > /dev/cpuset/h-foreground
 echo "0-6" > /dev/cpuset/h-background
 
-# Enable tcp_low_latency for even faster ACKs
-echo 1 > /proc/sys/net/ipv4/tcp_low_latency
-
-# Enable TCP Fast Open
-echo 3 > /proc/sys/net/ipv4/tcp_fastopen
-
-# Disable TCP Slow Start
-echo 1 > /proc/sys/net/ipv4/tcp_slow_start_after_idle
-
-# Use the "best-effort" scheduler for the network
-echo 1 > /proc/sys/net/core/netdev_budget
-
 # Set default and maximum receive buffer sizes
 echo 1310720 > /proc/sys/net/core/rmem_default
 echo 8388608 > /proc/sys/net/core/rmem_max
