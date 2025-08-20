@@ -12,33 +12,6 @@ echo "2-5" > /dev/cpuset/restricted/cpus
 echo "0-7" > /dev/cpuset/h-foreground
 echo "0-6" > /dev/cpuset/h-background
 
-# Low latency for gaming
-echo 128 > /proc/sys/net/core/netdev_budget
-
-# Set default and maximum receive buffer sizes
-echo 262144 > /proc/sys/net/core/rmem_default
-echo 262144 > /proc/sys/net/core/wmem_default
-echo 524288 > /proc/sys/net/core/rmem_max
-echo 524288 > /proc/sys/net/core/wmem_max
-
-# Set maximum size for ancillary data and options
-echo 20480 > /proc/sys/net/core/optmem_max
-
-# Reduce backlog so network queue doesn't bloat
-echo 500 > /proc/sys/net/core/netdev_max_backlog
-
-# Set TCP receive buffer sizes (min default max)
-echo "4096 87380 512000" > /proc/sys/net/ipv4/tcp_rmem
-
-# Set TCP send buffer sizes (min default max)
-echo "4096 65536 512000" > /proc/sys/net/ipv4/tcp_wmem
-
-# Set total TCP memory thresholds (low pressure high - in pages)
-echo "44259 59012 88518" > /proc/sys/net/ipv4/tcp_mem
-
-# Set total UDP memory thresholds (low pressure high - in pages)
-echo "88518 118025 177036" > /proc/sys/net/ipv4/udp_mem
-
 # Set RPS (Receive Packet Steering) for each rmnet interface
 echo fe > /sys/class/net/rmnet0/queues/rx-0/rps_cpus
 echo fe > /sys/class/net/rmnet1/queues/rx-0/rps_cpus
@@ -58,7 +31,7 @@ echo 500 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/up_rate_limit_us
 echo 1000 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/down_rate_limit_us
 
 echo "schedutil" > /sys/devices/system/cpu/cpufreq/policy6/scaling_governor
-echo 200 > /sys/devices/system/cpu/cpufreq/policy6/schedutil/up_rate_limit_us
+echo 500 > /sys/devices/system/cpu/cpufreq/policy6/schedutil/up_rate_limit_us
 echo 500 > /sys/devices/system/cpu/cpufreq/policy6/schedutil/down_rate_limit_us
 
 # Use 10ms polling_interval for silver and gold latfloor
