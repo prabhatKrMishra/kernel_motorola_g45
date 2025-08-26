@@ -28,11 +28,11 @@ echo c0 > /sys/class/net/wlan0/queues/rx-0/rps_cpus
 # Set governor settings for CPU scaling
 echo "schedutil" > /sys/devices/system/cpu/cpufreq/policy0/scaling_governor
 echo 500 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/up_rate_limit_us
-echo 1000 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/down_rate_limit_us
+echo 2000 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/down_rate_limit_us
 
 echo "schedutil" > /sys/devices/system/cpu/cpufreq/policy6/scaling_governor
 echo 500 > /sys/devices/system/cpu/cpufreq/policy6/schedutil/up_rate_limit_us
-echo 500 > /sys/devices/system/cpu/cpufreq/policy6/schedutil/down_rate_limit_us
+echo 2000 > /sys/devices/system/cpu/cpufreq/policy6/schedutil/down_rate_limit_us
 
 # Use 10ms polling_interval for silver and gold latfloor
 echo 50 > /sys/devices/platform/soc/soc:qcom,cpu-cpu-ddr-bw/devfreq/soc:qcom,cpu-cpu-ddr-bw/polling_interval
@@ -71,12 +71,19 @@ echo 1 > /sys/kernel/mm/ksm/run
 
 # Set the io-scheduler to ssg on all mq support devices
 echo "ssg" > /sys/block/sda/queue/scheduler
+echo 64 > /sys/block/sda/queue/nr_requests
 echo "ssg" > /sys/block/sdb/queue/scheduler
+echo 64 > /sys/block/sdb/queue/nr_requests
 echo "ssg" > /sys/block/sdc/queue/scheduler
+echo 64 > /sys/block/sdc/queue/nr_requests
 echo "ssg" > /sys/block/sdd/queue/scheduler
+echo 64 > /sys/block/sdd/queue/nr_requests
 echo "ssg" > /sys/block/sde/queue/scheduler
+echo 64 > /sys/block/sde/queue/nr_requests
 echo "ssg" > /sys/block/sdf/queue/scheduler
+echo 64 > /sys/block/sdf/queue/nr_requests
 echo "ssg" > /sys/class/block/mmcblk1/queue/scheduler
+echo 64 > /sys/block/mmcblk1/queue/nr_requests
 
 # Runtime fs tuning
 echo 0 > /sys/block/sda/queue/iostats
