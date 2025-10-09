@@ -2561,6 +2561,13 @@ int a6xx_perfcounter_update(struct adreno_device *adreno_dev,
 		return -ENOSPC;
 	}
 
+	/* Ensure there is enough space in the reglist buffer for new pairs */
+	if ((offset + (pending_pairs * 2)) >=
+		(adreno_dev->pwrup_reglist->size / sizeof(u32))) {
+		cpu_gpu_unlock(lock);
+		return -ENOSPC;
+	}
+
 	/*
 	 * For all targets A6XX_RBBM_PERFCTR_CNTL needs to be the last entry,
 	 * so overwrite the existing A6XX_RBBM_PERFCNTL_CTRL and add it back to
