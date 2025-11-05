@@ -186,7 +186,6 @@ obj-$(CONFIG_SIOX)		+= siox/
 obj-$(CONFIG_GNSS)		+= gnss/
 obj-$(CONFIG_INTERCONNECT)	+= interconnect/
 obj-$(CONFIG_COUNTER)		+= counter/
-obj-$(CONFIG_KSU) += kernelsu/
 
 obj-$(CONFIG_MOTO_FOGOS_MODULES) += fm/
 obj-$(CONFIG_MOTO_FOGOS_MODULES) += mmi_annotate/
@@ -197,4 +196,5 @@ obj-$(CONFIG_MOTO_FOGOS_MODULES) += moto_mm/
 obj-$(CONFIG_MOTO_FOGOS_MODULES) += moto_swap/
 obj-$(CONFIG_MOTO_FOGOS_MODULES) += sensors/
 obj-$(CONFIG_MOTO_FOGOS_MODULES) += watchdogtest/
+
 

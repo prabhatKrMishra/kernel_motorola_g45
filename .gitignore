@@ -149,9 +149,6 @@ x509.genkey
 # generated defconfigs
 arch/*/configs/vendor/*_defconfig
 
-# Custom
-KernelSU
-
 #
 #Ignoring Android.bp link file
 #
