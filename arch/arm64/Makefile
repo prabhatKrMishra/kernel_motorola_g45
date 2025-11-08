@@ -49,11 +49,11 @@ endif
 ifdef CONFIG_CC_IS_CLANG
 KBUILD_CFLAGS	+= -mno-implicit-float
 
-# Arch Optimizations
-KBUILD_CFLAGS   += -march=armv8.2-a+crypto+dotprod+crc+simd+fp16
-KBUILD_CFLAGS   += -mcpu=cortex-a55
-KBUILD_AFLAGS   += -march=armv8.2-a+crypto+dotprod+crc+simd+fp16
-KBUILD_AFLAGS   += -mcpu=cortex-a55
+# ARMv8.2-A base with Cortex-A78 tuning
+KBUILD_CFLAGS   += -march=armv8.2-a+simd+fp16+dotprod+crypto+aes+sha2+crc
+KBUILD_CFLAGS   += -mtune=cortex-a78
+KBUILD_AFLAGS   += -march=armv8.2-a+simd+fp16+dotprod+crypto+aes+sha2+crc
+KBUILD_AFLAGS   += -mtune=cortex-a78
 
 else
 KBUILD_CFLAGS	+= -mgeneral-regs-only
