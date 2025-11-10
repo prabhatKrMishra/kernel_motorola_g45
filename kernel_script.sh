@@ -25,6 +25,12 @@ echo fe > /sys/class/net/rmnet7/queues/rx-0/rps_cpus
 # Pin Wi-Fi RX to both big cores
 echo c0 > /sys/class/net/wlan0/queues/rx-0/rps_cpus
 
+# Network response is more important than network efficiency
+echo 64 > /proc/sys/net/core/netdev_budget
+echo 7000 > /proc/sys/net/core/netdev_budget_usecs
+echo 1 > /proc/sys/net/ipv4/tcp_low_latency
+echo 16384 > /proc/sys/net/ipv4/tcp_notsent_lowat
+
 # Set governor settings for CPU scaling
 echo "schedutil" > /sys/devices/system/cpu/cpufreq/policy0/scaling_governor
 echo 500 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/up_rate_limit_us
