@@ -28,11 +28,11 @@ echo c0 > /sys/class/net/wlan0/queues/rx-0/rps_cpus
 # Set governor settings for CPU scaling
 echo "schedutil" > /sys/devices/system/cpu/cpufreq/policy0/scaling_governor
 echo 500 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/up_rate_limit_us
-echo 2000 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/down_rate_limit_us
+echo 1000 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/down_rate_limit_us
 
 echo "schedutil" > /sys/devices/system/cpu/cpufreq/policy6/scaling_governor
 echo 500 > /sys/devices/system/cpu/cpufreq/policy6/schedutil/up_rate_limit_us
-echo 2000 > /sys/devices/system/cpu/cpufreq/policy6/schedutil/down_rate_limit_us
+echo 1000 > /sys/devices/system/cpu/cpufreq/policy6/schedutil/down_rate_limit_us
 
 # Use 10ms polling_interval for silver and gold latfloor
 echo 50 > /sys/devices/platform/soc/soc:qcom,cpu-cpu-ddr-bw/devfreq/soc:qcom,cpu-cpu-ddr-bw/polling_interval
