@@ -7,7 +7,7 @@ OUTPUT_DIRECTORY_PATH=$ROOT_PATH/out
 BUILD_CONFIG="kernel/msm-5.4/build.config.msm.holi"
 BUILD_VARIANT="qgki"
 BUILD_TARGET_PRODUCT="fogos"
-CLANG_LTO_TYPE="full"
+CLANG_LTO_TYPE="thin"
 
 #============== Argument Handler ==============#
 CLEAR_CCACHE=0
@@ -56,10 +56,10 @@ export HEADER_ARCH=arm64
 
 #============== LLVM TOOLCHAIN ==============#
 # AOSP clang v20.0.0
-# export LLVM_DIR=$ROOT_PATH/prebuilts-master/clang/host/linux-x86/clang-r547379/bin
+export LLVM_DIR=$ROOT_PATH/prebuilts-master/clang/host/linux-x86/clang-r547379/bin
 
 # Qualcomm® Snapdragon™ LLVM 19.0.0
-export LLVM_DIR=$ROOT_PATH/sdclang-19.0.0/bin
+# export LLVM_DIR=$ROOT_PATH/sdclang-19.0.0/bin
 
 #============== CCACHE CONFIGURATION ==============#
 export PATH="/usr/lib/ccache:$PATH"
