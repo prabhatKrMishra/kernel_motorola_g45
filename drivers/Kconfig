@@ -232,5 +232,4 @@ source "drivers/counter/Kconfig"
 
 source "drivers/moto_swap/Kconfig"
 
-source "drivers/kernelsu/Kconfig"
 endmenu
