@@ -56,7 +56,7 @@ export HEADER_ARCH=arm64
 
 #============== LLVM TOOLCHAIN ==============#
 # AOSP clang v20.0.0
-export LLVM_DIR=$ROOT_PATH/prebuilts-master/clang/host/linux-x86/clang-r547379/bin
+export LLVM_DIR=$ROOT_PATH/prebuilts-master/clang/host/linux-x86/clang-r574158/bin
 
 # Qualcomm® Snapdragon™ LLVM 19.0.0
 # export LLVM_DIR=$ROOT_PATH/sdclang-19.0.0/bin
