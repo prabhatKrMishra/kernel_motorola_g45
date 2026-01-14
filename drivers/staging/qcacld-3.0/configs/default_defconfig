@@ -863,9 +863,11 @@ endif
 endif
 
 ifeq ($(CONFIG_ARCH_LAHAINA), y)
+ifeq ($(CONFIG_ARCH_BLAIR), y)
 ifeq ($(CONFIG_IPA_OFFLOAD), y)
 CONFIG_ENABLE_SMMU_S1_TRANSLATION := y
 CONFIG_SMMU_S1_UNMAP := y
+endif
 endif
 endif
 
