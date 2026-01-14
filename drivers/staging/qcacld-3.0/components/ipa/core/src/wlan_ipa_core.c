@@ -3580,6 +3580,7 @@ static void wlan_ipa_uc_loaded_handler(struct wlan_ipa_priv *ipa_ctx)
 		ipa_info("UC already loaded");
 		return;
 	}
+	ipa_ctx->uc_loaded = true;
 
 	if (!qdf_dev) {
 		ipa_err("qdf_dev is null");
