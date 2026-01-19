@@ -25,6 +25,12 @@ echo fe > /sys/class/net/rmnet7/queues/rx-0/rps_cpus
 # Pin Wi-Fi RX to both big cores
 echo c0 > /sys/class/net/wlan0/queues/rx-0/rps_cpus
 
+# Push control packets earlier (safe, low overhead)
+echo 4096 > /proc/sys/net/ipv4/tcp_notsent_lowat
+echo 1 > /proc/sys/net/ipv4/tcp_ecn
+echo 0 > /proc/sys/net/ipv4/tcp_slow_start_after_idle
+echo 1 > /proc/sys/net/ipv4/tcp_no_metrics_save
+
 # Set governor settings for CPU scaling
 echo "schedutil" > /sys/devices/system/cpu/cpufreq/policy0/scaling_governor
 echo 500 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/up_rate_limit_us
