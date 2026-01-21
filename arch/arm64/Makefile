@@ -49,11 +49,11 @@ endif
 ifdef CONFIG_CC_IS_CLANG
 KBUILD_CFLAGS	+= -mno-implicit-float
 
-# ARMv8.2-A base with Cortex-A78 tuning
+# ARMv8.2-A baseline for A78 + A55
 KBUILD_CFLAGS   += -march=armv8.2-a+simd+fp16+dotprod+crypto+aes+sha2+crc
-KBUILD_CFLAGS   += -mtune=cortex-a78
+KBUILD_CFLAGS   += -mtune=generic
 KBUILD_AFLAGS   += -march=armv8.2-a+simd+fp16+dotprod+crypto+aes+sha2+crc
-KBUILD_AFLAGS   += -mtune=cortex-a78
+KBUILD_AFLAGS   += -mtune=generic
 
 else
 KBUILD_CFLAGS	+= -mgeneral-regs-only
