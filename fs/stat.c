@@ -17,7 +17,6 @@
 #include <linux/syscalls.h>
 #include <linux/pagemap.h>
 #include <linux/compat.h>
-#include <linux/suspicious.h>
 #if defined(CONFIG_KSU_SUSFS_SUS_KSTAT) || defined(CONFIG_KSU_SUSFS_SUS_MOUNT)
 #include <linux/susfs_def.h>
 #endif
@@ -130,10 +129,6 @@ int vfs_getattr(const struct path *path, struct kstat *stat,
 		u32 request_mask, unsigned int query_flags)
 {
 	int retval;
-
-	if (is_suspicious_path(path)) {
-		return -ENOENT;
-	}
 
 	retval = security_inode_getattr(path);
 	if (retval)
