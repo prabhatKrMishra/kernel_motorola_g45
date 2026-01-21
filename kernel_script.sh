@@ -53,6 +53,10 @@ echo 2 > /proc/sys/vm/dirty_background_ratio
 echo 500 > /proc/sys/vm/dirty_writeback_centisecs
 echo 300 > /proc/sys/vm/dirty_expire_centisecs
 
+# Swappiness tuning for low cpu consumption
+echo 40 > /proc/sys/vm/swappiness
+echo 0 > /proc/sys/vm/page-cluster
+
 # Ultra-Low-Latency
 echo 0 > /proc/sys/kernel/sched_schedstats
 
