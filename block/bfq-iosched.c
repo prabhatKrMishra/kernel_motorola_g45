@@ -5203,7 +5203,7 @@ static void bfq_put_stable_ref(struct bfq_queue *bfqq)
 	bfq_put_queue(bfqq);
 }
 
-static void bfq_put_cooperator(struct bfq_queue *bfqq)
+void bfq_put_cooperator(struct bfq_queue *bfqq)
 {
 	struct bfq_queue *__bfqq, *next;
 
@@ -6006,7 +6006,7 @@ static void bfq_insert_request(struct blk_mq_hw_ctx *hctx, struct request *rq,
 		return;
 	}
 
-	trace_block_rq_insert(rq);
+	trace_block_rq_insert(hctx->queue, rq);
 
 	/*
 	 * Reqs with at_head or passthrough flags set are to be put
