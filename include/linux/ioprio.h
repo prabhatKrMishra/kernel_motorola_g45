@@ -44,9 +44,10 @@ enum {
 };
 
 /*
- * Fallback BE priority
+ * Fallback BE priority level.
  */
-#define IOPRIO_NORM	(4)
+#define IOPRIO_NORM	4
+#define IOPRIO_BE_NORM	IOPRIO_NORM
 
 /*
  * if process has set io priority explicitly, use that. if not, convert
