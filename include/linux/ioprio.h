@@ -72,6 +72,11 @@ static inline int task_nice_ioclass(struct task_struct *task)
 }
 
 /*
+ * Default IO priority.
+ */
+#define IOPRIO_DEFAULT	IOPRIO_PRIO_VALUE(IOPRIO_CLASS_BE, IOPRIO_BE_NORM)
+
+/*
  * If the calling process has set an I/O priority, use that. Otherwise, return
  * the default I/O priority.
  */
@@ -81,7 +86,7 @@ static inline int get_current_ioprio(void)
 
 	if (ioc)
 		return ioc->ioprio;
-	return IOPRIO_PRIO_VALUE(IOPRIO_CLASS_NONE, 0);
+	return IOPRIO_DEFAULT;
 }
 
 /*
