@@ -263,6 +263,7 @@ TRACE_EVENT_RCU(rcu_exp_funnel_lock,
  *	"WakeOvf": Wake rcuo kthread, CB list is huge.
  *	"WakeOvfIsDeferred": Wake rcuo kthread later, CB list is huge.
  *	"WakeNot": Don't wake rcuo kthread.
+ *	"WakeBypassIsDeferred": Wake rcuo kthread later, bypass list is contended.
  *	"WakeNotPoll": Don't wake rcuo kthread because it is polling.
  *	"DeferredWake": Carried out the "IsDeferred" wakeup.
  *	"Poll": Start of new polling cycle for rcu_nocb_poll.
