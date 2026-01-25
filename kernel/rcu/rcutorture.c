@@ -2112,13 +2112,11 @@ static int rcu_torture_fwd_prog(void *args)
 	do {
 		schedule_timeout_interruptible(fwd_progress_holdoff * HZ);
 		WRITE_ONCE(rcu_fwd_emergency_stop, false);
-		register_oom_notifier(&rcutorture_oom_nb);
 		if (!IS_ENABLED(CONFIG_TINY_RCU) ||
 		    rcu_inkernel_boot_has_ended())
 			rcu_torture_fwd_prog_nr(rfp, &tested, &tested_tries);
 		if (rcu_inkernel_boot_has_ended())
 			rcu_torture_fwd_prog_cr(rfp);
-		unregister_oom_notifier(&rcutorture_oom_nb);
 
 		/* Avoid slow periods, better to test when busy. */
 		stutter_wait("rcu_torture_fwd_prog");
@@ -2161,6 +2159,7 @@ static int __init rcu_torture_fwd_prog_init(void)
 	mutex_lock(&rcu_fwd_mutex);
 	rcu_fwds = rfp;
 	mutex_unlock(&rcu_fwd_mutex);
+	register_oom_notifier(&rcutorture_oom_nb);
 	return torture_create_kthread(rcu_torture_fwd_prog, rfp, fwd_prog_task);
 }
 
@@ -2173,6 +2172,7 @@ static void rcu_torture_fwd_prog_cleanup(void)
 	mutex_lock(&rcu_fwd_mutex);
 	rcu_fwds = NULL;
 	mutex_unlock(&rcu_fwd_mutex);
+	unregister_oom_notifier(&rcutorture_oom_nb);
 	kfree(rfp);
 }
 
