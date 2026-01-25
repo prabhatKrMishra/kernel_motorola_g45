@@ -37,7 +37,7 @@ TORTURE_TRUST_MAKE=""
 resdir=""
 configs=""
 cpus=0
-ds=`date +%Y.%m.%d-%H:%M:%S`
+ds=`date +%Y.%m.%d-%H.%M.%S`
 jitter="-1"
 
 . functions.sh
