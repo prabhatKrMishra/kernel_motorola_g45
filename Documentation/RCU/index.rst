@@ -8,6 +8,7 @@ RCU concepts
    :maxdepth: 1
 
    rcu
+   torture
    listRCU
    UP
 
