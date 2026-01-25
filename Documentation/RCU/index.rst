@@ -9,6 +9,7 @@ RCU concepts
 
    rcu
    torture
+   stallwarn
    listRCU
    UP
 
