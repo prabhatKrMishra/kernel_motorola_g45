@@ -58,6 +58,7 @@
 #include <linux/sched/isolation.h>
 #include <linux/sched/clock.h>
 #include "../time/tick-internal.h"
+#include <asm-generic/atomic-instrumented.h>
 
 #include "tree.h"
 #include "rcu.h"
@@ -634,7 +635,7 @@ static noinstr void rcu_eqs_enter(bool user)
 	rcu_preempt_deferred_qs(current);
 
 	// instrumentation for the noinstr rcu_dynticks_eqs_enter()
-	instrument_atomic_write(&rdp->dynticks, sizeof(rdp->dynticks));
+	kasan_check_write(&rdp->dynticks, sizeof(rdp->dynticks));
 
 	instrumentation_end();
 	WRITE_ONCE(rdp->dynticks_nesting, 0); /* Avoid irq-access tearing. */
@@ -733,7 +734,7 @@ noinstr void rcu_nmi_exit(void)
 		rcu_prepare_for_idle();
 
 	// instrumentation for the noinstr rcu_dynticks_eqs_enter()
-	instrument_atomic_write(&rdp->dynticks, sizeof(rdp->dynticks));
+	kasan_check_write(&rdp->dynticks, sizeof(rdp->dynticks));
 	instrumentation_end();
 
 	// RCU is watching here ...
@@ -853,7 +854,7 @@ static void noinstr rcu_eqs_exit(bool user)
 	instrumentation_begin();
 
 	// instrumentation for the noinstr rcu_dynticks_eqs_exit()
-	instrument_atomic_write(&rdp->dynticks, sizeof(rdp->dynticks));
+	kasan_check_write(&rdp->dynticks, sizeof(rdp->dynticks));
 
 	rcu_cleanup_after_idle();
 	trace_rcu_dyntick(TPS("End"), rdp->dynticks_nesting, 1, atomic_read(&rdp->dynticks));
@@ -1003,9 +1004,9 @@ noinstr void rcu_nmi_enter(void)
 
 		instrumentation_begin();
 		// instrumentation for the noinstr rcu_dynticks_curr_cpu_in_eqs()
-		instrument_atomic_read(&rdp->dynticks, sizeof(rdp->dynticks));
+		kasan_check_read(&rdp->dynticks, sizeof(rdp->dynticks));
 		// instrumentation for the noinstr rcu_dynticks_eqs_exit()
-		instrument_atomic_write(&rdp->dynticks, sizeof(rdp->dynticks));
+		kasan_check_write(&rdp->dynticks, sizeof(rdp->dynticks));
 
 		incby = 1;
 	} else if (!in_nmi()) {
