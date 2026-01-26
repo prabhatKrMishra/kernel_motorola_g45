@@ -118,12 +118,10 @@ static struct cpuidle_state *cpuidle_state_table;
 static __cpuidle int intel_idle_ibrs(struct cpuidle_device *dev,
 				     struct cpuidle_driver *drv, int index)
 {
-	bool smt_active = sched_smt_active();
-	u64 spec_ctrl = spec_ctrl_current();
-	int ret;
-
-	if (smt_active)
-		wrmsrl(MSR_IA32_SPEC_CTRL, 0);
+	struct cpuidle_state *state = &drv->states[index];
+	unsigned long eax = flg2MWAIT(state->flags);
+	unsigned long ecx = 1; /* break on interrupt flag */
+	bool tick;
 
 	ret = intel_idle(dev, drv, index);
 
