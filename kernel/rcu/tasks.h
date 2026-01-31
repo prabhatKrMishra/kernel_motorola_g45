@@ -113,7 +113,6 @@ static void call_rcu_tasks_iw_wakeup(struct irq_work *iwp);
 #define DEFINE_RCU_TASKS(rt_name, gp, call, n)						\
 static DEFINE_PER_CPU(struct rcu_tasks_percpu, rt_name ## __percpu) = {			\
 	.lock = __RAW_SPIN_LOCK_UNLOCKED(rt_name ## __percpu.cbs_pcpu_lock),		\
-	.rtp_irq_work = IRQ_WORK_INIT(call_rcu_tasks_iw_wakeup),			\
 };											\
 static struct rcu_tasks rt_name =							\
 {											\
@@ -209,6 +208,8 @@ static const char *tasks_gp_state_getname(struct rcu_tasks *rtp)
 }
 #endif /* #ifndef CONFIG_TINY_RCU */
 
+static void call_rcu_tasks_iw_wakeup(struct irq_work *iwp);
+
 // Initialize per-CPU callback lists for the specified flavor of
 // Tasks RCU.
 static void cblist_init_generic(struct rcu_tasks *rtp)
@@ -244,6 +245,7 @@ static void cblist_init_generic(struct rcu_tasks *rtp)
 		INIT_WORK(&rtpcp->rtp_work, rcu_tasks_invoke_cbs_wq);
 		rtpcp->cpu = cpu;
 		rtpcp->rtpp = rtp;
+		init_irq_work(&rtpcp->rtp_irq_work, call_rcu_tasks_iw_wakeup);
 		raw_spin_unlock_rcu_node(rtpcp); // irqs remain disabled.
 	}
 	raw_spin_unlock_irqrestore(&rtp->cbs_gbl_lock, flags);
