@@ -93,7 +93,7 @@ int f2fs_init_casefolded_name(const struct inode *dir,
 		if ((int)fname->cf_name.len <= 0) {
 			kfree(fname->cf_name.name);
 			fname->cf_name.name = NULL;
-			if (sb_has_strict_encoding(sb))
+			if (sb_has_enc_strict_mode(sb))
 				return -EINVAL;
 			/* fall back to treating name as opaque byte sequence */
 		}
@@ -250,7 +250,7 @@ static bool f2fs_match_ci_name(const struct inode *dir, const struct qstr *name,
 		 * In strict mode, ignore invalid names.  In non-strict mode,
 		 * fall back to treating them as opaque byte sequences.
 		 */
-		if (sb_has_strict_encoding(sb) || name->len != entry.len)
+		if (sb_has_enc_strict_mode(sb) || name->len != entry.len)
 			res = 1;
 		else
 			res = memcmp(name->name, entry.name, name->len);
