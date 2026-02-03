@@ -368,7 +368,7 @@ static bool __disable_cx_regulator_wait(struct regulator *reg,
 			return (!(val & BIT(31)));
 		}
 
-		usleep_range((100 >> 2) + 1, 50);
+		usleep_range((100 >> 2) + 1, 100);
 	}
 }
 
@@ -871,15 +871,12 @@ void a6xx_start(struct adreno_device *adreno_dev)
 	 */
 	a6xx_hwcg_set(adreno_dev, true);
 
-	/* Write barrier to ensure all register writes complete */
-	wmb();
-
 	/*
 	 * All registers must be written before this point so that we don't
 	 * miss any register programming when we patch the power up register
 	 * list.
 	 */
-	if (unlikely(!patch_reglist) && (adreno_dev->pwrup_reglist->gpuaddr != 0)) {
+	if (!patch_reglist && (adreno_dev->pwrup_reglist->gpuaddr != 0)) {
 		a6xx_patch_pwrup_reglist(adreno_dev);
 		patch_reglist = true;
 	}
@@ -1424,7 +1421,7 @@ void a6xx_gx_cpr_toggle(struct kgsl_device *device)
 	wmb();
 
 	/* Wait for small time before we enable GX CPR */
-	udelay(3);
+	udelay(5);
 
 	writel_relaxed(val | 0x00000001, gx_cpr_virt + GPU_CPR_FSM_CTL_OFFSET);
 	/* make sure register write committed */

@@ -247,8 +247,8 @@ void a6xx_preemption_trigger(struct adreno_device *adreno_dev)
 	struct adreno_preemption *preempt = &adreno_dev->preempt;
 
 	/* Put ourselves into a possible trigger state */
-	if (unlikely(!adreno_move_preempt_state(adreno_dev,
-		ADRENO_PREEMPT_NONE, ADRENO_PREEMPT_START)))
+	if (!adreno_move_preempt_state(adreno_dev,
+		ADRENO_PREEMPT_NONE, ADRENO_PREEMPT_START))
 		return;
 
 	/* Get the next ringbuffer to preempt in */
@@ -258,7 +258,7 @@ void a6xx_preemption_trigger(struct adreno_device *adreno_dev)
 	 * Nothing to do if every ringbuffer is empty or if the current
 	 * ringbuffer is the only active one
 	 */
-	if (unlikely(next == NULL) || unlikely(next == adreno_dev->cur_rb)) {
+	if (next == NULL || next == adreno_dev->cur_rb) {
 		/*
 		 * Update any critical things that might have been skipped while
 		 * we were looking for a new ringbuffer

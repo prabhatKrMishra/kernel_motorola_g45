@@ -904,7 +904,7 @@ int adreno_ringbuffer_submitcmd(struct adreno_device *adreno_dev,
 	 *    fault_policy
 	 * c) force preamble for commandbatch
 	 */
-	if (unlikely(test_bit(ADRENO_CONTEXT_SKIP_CMD, &drawctxt->base.priv)) &&
+	if (test_bit(ADRENO_CONTEXT_SKIP_CMD, &drawctxt->base.priv) &&
 		(!test_bit(CMDOBJ_SKIP, &cmdobj->priv))) {
 
 		set_bit(KGSL_FT_SKIPCMD, &cmdobj->fault_recovery);
@@ -936,7 +936,7 @@ int adreno_ringbuffer_submitcmd(struct adreno_device *adreno_dev,
 	 * the accounting sane. Set start_index and numibs to 0 to just
 	 * generate the start and end markers and skip everything else
 	 */
-	if (unlikely(test_bit(CMDOBJ_SKIP, &cmdobj->priv))) {
+	if (test_bit(CMDOBJ_SKIP, &cmdobj->priv)) {
 		use_preamble = false;
 		numibs = 0;
 	}
@@ -1089,7 +1089,7 @@ int adreno_ringbuffer_submitcmd(struct adreno_device *adreno_dev,
 	 * In the unlikely event of an error in the drawctxt switch,
 	 * treat it like a hang
 	 */
-	if (unlikely(ret)) {
+	if (ret) {
 		/*
 		 * It is "normal" to get a -ENOSPC or a -ENOENT. Don't log it,
 		 * the upper layers know how to handle it

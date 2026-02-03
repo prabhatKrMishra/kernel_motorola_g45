@@ -480,11 +480,11 @@ static void a6xx_hwsched_touch_wakeup(struct adreno_device *adreno_dev)
 	 * Do not wake up a suspended device or until the first boot sequence
 	 * has been completed.
 	 */
-	if (unlikely(test_bit(GMU_PRIV_PM_SUSPEND, &gmu->flags) ||
-		!test_bit(GMU_PRIV_FIRST_BOOT_DONE, &gmu->flags)))
+	if (test_bit(GMU_PRIV_PM_SUSPEND, &gmu->flags) ||
+		!test_bit(GMU_PRIV_FIRST_BOOT_DONE, &gmu->flags))
 		return;
 
-	if (likely(test_bit(GMU_PRIV_GPU_STARTED, &gmu->flags)))
+	if (test_bit(GMU_PRIV_GPU_STARTED, &gmu->flags))
 		goto done;
 
 	trace_kgsl_pwr_request_state(device, KGSL_STATE_ACTIVE);
@@ -523,7 +523,7 @@ static int a6xx_hwsched_boot(struct adreno_device *adreno_dev)
 	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
 	int ret;
 
-	if (likely(test_bit(GMU_PRIV_GPU_STARTED, &gmu->flags)))
+	if (test_bit(GMU_PRIV_GPU_STARTED, &gmu->flags))
 		return 0;
 
 	trace_kgsl_pwr_request_state(device, KGSL_STATE_ACTIVE);
@@ -607,7 +607,7 @@ static int a6xx_hwsched_power_off(struct adreno_device *adreno_dev)
 	struct a6xx_gmu_device *gmu = to_a6xx_gmu(adreno_dev);
 	int ret;
 
-	if (unlikely(!test_bit(GMU_PRIV_GPU_STARTED, &gmu->flags)))
+	if (!test_bit(GMU_PRIV_GPU_STARTED, &gmu->flags))
 		return 0;
 
 	trace_kgsl_pwr_request_state(device, KGSL_STATE_SLUMBER);

@@ -69,7 +69,7 @@ static inline bool drawqueue_is_current(
 	struct adreno_ringbuffer *rb = DRAWQUEUE_RB(drawqueue);
 	struct adreno_device *adreno_dev = ADRENO_RB_DEVICE(rb);
 
-	return likely(adreno_dev->cur_rb == rb);
+	return (adreno_dev->cur_rb == rb);
 }
 
 static void _add_context(struct adreno_device *adreno_dev,
@@ -148,7 +148,7 @@ static void _track_context(struct adreno_device *adreno_dev,
 static inline int
 _drawqueue_inflight(struct adreno_dispatcher_drawqueue *drawqueue)
 {
-	return unlikely(drawqueue->active_context_count > 1)
+	return (drawqueue->active_context_count > 1)
 		? _dispatcher_q_inflight_lo : _dispatcher_q_inflight_hi;
 }
 
@@ -181,10 +181,10 @@ static inline bool _isidle(struct adreno_device *adreno_dev)
 	unsigned int reg_rbbm_status;
 	u32 mask;
 
-	if (unlikely(!kgsl_state_is_awake(KGSL_DEVICE(adreno_dev))))
+	if (!kgsl_state_is_awake(KGSL_DEVICE(adreno_dev)))
 		goto ret;
 
-	if (unlikely(!adreno_rb_empty(adreno_dev->cur_rb)))
+	if (!adreno_rb_empty(adreno_dev->cur_rb))
 		return false;
 
 	/* only check rbbm status to determine if GPU is idle */
