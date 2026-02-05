@@ -23,6 +23,11 @@
 #include <linux/interrupt.h>
 #include <linux/irqdesc.h>
 
+#if !IS_ENABLED(CONFIG_DEBUG_FS)
+#include <linux/kobject.h>
+#include <linux/sysfs.h>
+#endif
+
 #include "power.h"
 
 #ifndef CONFIG_SUSPEND
@@ -1124,6 +1129,78 @@ static int print_wakeup_source_stats(struct seq_file *m,
 	return 0;
 }
 
+#if !IS_ENABLED(CONFIG_DEBUG_FS)
+static ssize_t wakeup_sources_sysfs_show(struct kobject *kobj,
+					 struct kobj_attribute *attr,
+					 char *buf)
+{
+	struct wakeup_source *ws;
+	ssize_t len = 0;
+	int srcuidx;
+
+	/* Header (same as debugfs/proc output) */
+	len += scnprintf(buf + len, PAGE_SIZE - len,
+		"name\t\tactive_count\tevent_count\twakeup_count\t"
+		"expire_count\tactive_since\ttotal_time\tmax_time\t"
+		"last_change\tprevent_suspend_time\n");
+
+	srcuidx = srcu_read_lock(&wakeup_srcu);
+	list_for_each_entry_rcu(ws, &wakeup_sources, entry) {
+		ktime_t active_time = 0;
+		ktime_t total_time;
+		ktime_t prevent_sleep_time;
+
+		spin_lock_irq(&ws->lock);
+
+		total_time = ws->total_time;
+		prevent_sleep_time = ws->prevent_sleep_time;
+
+		if (ws->active) {
+			ktime_t now = ktime_get();
+			active_time = ktime_sub(now, ws->last_time);
+			total_time = ktime_add(total_time, active_time);
+			if (ws->autosleep_enabled)
+				prevent_sleep_time = ktime_add(
+					prevent_sleep_time,
+					ktime_sub(now, ws->start_prevent_time));
+		}
+
+		len += scnprintf(buf + len, PAGE_SIZE - len,
+			"%-12s\t%lu\t\t%lu\t\t%lu\t\t%lu\t\t%lld\t\t%lld\t\t%lld\t\t%lld\t\t%lld\n",
+			ws->name,
+			ws->active_count,
+			ws->event_count,
+			ws->wakeup_count,
+			ws->expire_count,
+			ktime_to_ms(active_time),
+			ktime_to_ms(total_time),
+			ktime_to_ms(ws->max_time),
+			ktime_to_ms(ws->last_time),
+			ktime_to_ms(prevent_sleep_time));
+
+		spin_unlock_irq(&ws->lock);
+
+		if (len >= PAGE_SIZE)
+			break;
+	}
+	srcu_read_unlock(&wakeup_srcu, srcuidx);
+
+	/* Append deleted wakeup sources stats */
+	len += scnprintf(buf + len, PAGE_SIZE - len,
+		"%-12s\t%lu\t\t%lu\t\t%lu\t\t%lu\t\t0\t\t%lld\t\t%lld\t\t0\t\t%lld\n",
+		deleted_ws.name,
+		deleted_ws.active_count,
+		deleted_ws.event_count,
+		deleted_ws.wakeup_count,
+		deleted_ws.expire_count,
+		ktime_to_ms(deleted_ws.total_time),
+		ktime_to_ms(deleted_ws.max_time),
+		ktime_to_ms(deleted_ws.prevent_sleep_time));
+
+	return len;
+}
+#endif
+
 static void *wakeup_sources_stats_seq_start(struct seq_file *m,
 					loff_t *pos)
 {
@@ -1205,6 +1282,20 @@ static const struct file_operations wakeup_sources_stats_fops = {
 	.llseek = seq_lseek,
 	.release = seq_release_private,
 };
+
+#if !IS_ENABLED(CONFIG_DEBUG_FS)
+static struct kobj_attribute wakeup_sources_attr =
+	__ATTR(wakeup_sources, 0444,
+	       wakeup_sources_sysfs_show, NULL);
+
+static int __init wakeup_sources_sysfs_init(void)
+{
+	return sysfs_create_file(kernel_kobj,
+				 &wakeup_sources_attr.attr);
+}
+
+postcore_initcall(wakeup_sources_sysfs_init);
+#endif
 
 static int __init wakeup_sources_debugfs_init(void)
 {
