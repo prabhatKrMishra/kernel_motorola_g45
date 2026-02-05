@@ -24,7 +24,7 @@
 #define IPA_LAN_AGGR_PKT_CNT 1
 #define IPA_LAN_NAPI_MAX_FRAMES (NAPI_WEIGHT / IPA_LAN_AGGR_PKT_CNT)
 #define IPA_LAST_DESC_CNT 0xFFFF
-#define POLLING_INACTIVITY_RX 40
+#define POLLING_INACTIVITY_RX 5
 #define POLLING_MIN_SLEEP_RX 1010
 #define POLLING_MAX_SLEEP_RX 1050
 #define POLLING_INACTIVITY_TX 40
@@ -5589,8 +5589,7 @@ start_poll:
 	/* When not able to replenish enough descriptors, keep in polling
 	 * mode, wait for napi-poll and replenish again.
 	 */
-	if (cnt < weight && ep->sys->len > IPA_DEFAULT_SYS_YELLOW_WM &&
-		wan_def_sys->len > IPA_DEFAULT_SYS_YELLOW_WM) {
+	if (cnt < weight) {
 		napi_complete(ep->sys->napi_obj);
 		IPA_STATS_INC_CNT(ep->sys->napi_comp_cnt);
 		ret = ipa3_rx_switch_to_intr_mode(ep->sys);
