@@ -35,7 +35,6 @@
 #include <linux/of.h>
 #include <linux/mutex.h>
 #include <linux/radix-tree.h>
-#include <linux/android_kabi.h>
 
 struct device_node;
 struct irq_domain;
@@ -84,7 +83,6 @@ enum irq_domain_bus_token {
 	DOMAIN_BUS_IPI,
 	DOMAIN_BUS_FSL_MC_MSI,
 	DOMAIN_BUS_TI_SCI_INTA_MSI,
-	DOMAIN_BUS_WAKEUP,
 };
 
 /**
@@ -178,11 +176,6 @@ struct irq_domain {
 	struct dentry		*debugfs_file;
 #endif
 
-	ANDROID_KABI_RESERVE(1);
-	ANDROID_KABI_RESERVE(2);
-	ANDROID_KABI_RESERVE(3);
-	ANDROID_KABI_RESERVE(4);
-
 	/* reverse map data. The linear map gets appended to the irq_domain */
 	irq_hw_number_t hwirq_max;
 	unsigned int revmap_direct_max_irq;
@@ -198,7 +191,7 @@ enum {
 	IRQ_DOMAIN_FLAG_HIERARCHY	= (1 << 0),
 
 	/* Irq domain name was allocated in __irq_domain_add() */
-	IRQ_DOMAIN_NAME_ALLOCATED	= (1 << 1),
+	IRQ_DOMAIN_NAME_ALLOCATED	= (1 << 6),
 
 	/* Irq domain is an IPI domain with virq per cpu */
 	IRQ_DOMAIN_FLAG_IPI_PER_CPU	= (1 << 2),
@@ -211,13 +204,6 @@ enum {
 
 	/* Irq domain implements MSI remapping */
 	IRQ_DOMAIN_FLAG_MSI_REMAP	= (1 << 5),
-
-	/*
-	 * Quirk to handle MSI implementations which do not provide
-	 * masking. Currently known to affect x86, but partially
-	 * handled in core code.
-	 */
-	IRQ_DOMAIN_MSI_NOMASK_QUIRK	= (1 << 6),
 
 	/*
 	 * Flags starting from IRQ_DOMAIN_FLAG_NONCORE are reserved
@@ -261,11 +247,7 @@ static inline struct fwnode_handle *irq_domain_alloc_fwnode(phys_addr_t *pa)
 }
 
 void irq_domain_free_fwnode(struct fwnode_handle *fwnode);
-#ifdef __GENKSYMS__	/* Android KABI hack to preserve CRC checker */
 struct irq_domain *__irq_domain_add(struct fwnode_handle *fwnode, int size,
-#else
-struct irq_domain *__irq_domain_add(struct fwnode_handle *fwnode, unsigned int size,
-#endif
 				    irq_hw_number_t hwirq_max, int direct_max,
 				    const struct irq_domain_ops *ops,
 				    void *host_data);
@@ -393,10 +375,8 @@ extern void irq_domain_associate_many(struct irq_domain *domain,
 extern void irq_domain_disassociate(struct irq_domain *domain,
 				    unsigned int irq);
 
-extern unsigned int irq_create_mapping_affinity(struct irq_domain *host,
-				      irq_hw_number_t hwirq,
-				      const struct irq_affinity_desc *affinity);
-unsigned int irq_create_mapping(struct irq_domain *host, irq_hw_number_t hwirq);
+extern unsigned int irq_create_mapping(struct irq_domain *host,
+				       irq_hw_number_t hwirq);
 extern unsigned int irq_create_fwspec_mapping(struct irq_fwspec *fwspec);
 extern void irq_dispose_mapping(unsigned int virq);
 
