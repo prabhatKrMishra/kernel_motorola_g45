@@ -364,7 +364,7 @@ out:
 static irqreturn_t ilitek_plat_isr_top_half(int irq, void *dev_id)
 {
 	if (irq != ilits->irq_num) {
-		ILI_ERR("Incorrect irq number (%d)\n", irq);
+		ILI_DBG("Incorrect irq number (%d)\n", irq);
 		return IRQ_NONE;
 	}
 

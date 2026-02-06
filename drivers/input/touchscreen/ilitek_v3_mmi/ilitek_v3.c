@@ -26,10 +26,18 @@
 bool debug_en = DEBUG_OUTPUT;
 EXPORT_SYMBOL(debug_en);
 
+#if ENABLE_WQ_ESD
 static struct workqueue_struct *esd_wq;
+#endif
+#if ENABLE_WQ_BAT
 static struct workqueue_struct *bat_wq;
+#endif
+#if ENABLE_WQ_ESD
 static struct delayed_work esd_work;
+#endif
+#if ENABLE_WQ_BAT
 static struct delayed_work bat_work;
+#endif
 
 #if CHARGER_NOTIFIER_CALLBACK
 #if KERNEL_VERSION(4, 1, 0) <= LINUX_VERSION_CODE
@@ -493,83 +501,44 @@ int ili_wq_esd_i2c_check(void)
 	return 0;
 }
 
+
+#if ENABLE_WQ_ESD
 static void ilitek_tddi_wq_esd_check(struct work_struct *work)
 {
 	if (mutex_is_locked(&ilits->touch_mutex)) {
 		ILI_INFO("touch is locked, ignore\n");
 		return ;
 	}
+
 	mutex_lock(&ilits->touch_mutex);
 	if (ilits->esd_recover() < 0) {
 		ILI_ERR("SPI ACK failed, doing spi recovery\n");
 		ili_spi_recovery();
 	}
 	mutex_unlock(&ilits->touch_mutex);
+
 	complete_all(&ilits->esd_done);
 	ili_wq_ctrl(WQ_ESD, ENABLE);
 }
-
-static int read_power_status(u8 *buf)
-{
-#if LINUX_VERSION_CODE <= KERNEL_VERSION(4, 14, 0)
-	struct file *f = NULL;
-	mm_segment_t old_fs;
-	ssize_t byte = 0;
-
-	old_fs = get_fs();
-	set_fs(KERNEL_DS);
-
-	f = filp_open(POWER_STATUS_PATH, O_RDONLY, 0);
-	if (ERR_ALLOC_MEM(f)) {
-		ILI_ERR("Failed to open %s\n", POWER_STATUS_PATH);
-		return -1;
-	}
-
-	f->f_op->llseek(f, 0, SEEK_SET);
-	byte = f->f_op->read(f, buf, 20, &f->f_pos);
-
-	ILI_DBG("Read %d bytes\n", (int)byte);
-
-	set_fs(old_fs);
-	filp_close(f, NULL);
-#else
-	return -1;
 #endif
-	return 0;
-}
 
+
+
+#if ENABLE_WQ_BAT
 static void ilitek_tddi_wq_bat_check(struct work_struct *work)
 {
-	u8 str[20] = {0};
-	static int charge_mode;
-
-	if (read_power_status(str) < 0)
-		ILI_ERR("Read power status failed\n");
-
-	ILI_DBG("Batter Status: %s\n", str);
-
-	if (strstr(str, "Charging") != NULL || strstr(str, "Full") != NULL
-		|| strstr(str, "Fully charged") != NULL) {
-		if (charge_mode != 1) {
-			ILI_DBG("Charging mode\n");
-			if (ili_ic_func_ctrl("plug", DISABLE) < 0) /* plug in */
-				ILI_ERR("Write plug in failed\n");
-			charge_mode = 1;
-		}
-	} else {
-		if (charge_mode != 2) {
-			ILI_DBG("Not charging mode\n");
-			if (ili_ic_func_ctrl("plug", ENABLE) < 0) /* plug out */
-				ILI_ERR("Write plug out failed\n");
-			charge_mode = 2;
-		}
-	}
+	/* 
+     * Blocking file I/O removed for performance. 
+     * Charger status is handled by ilitek_charger_notifier_callback.
+     */
 	ili_wq_ctrl(WQ_BAT, ENABLE);
 }
+#endif
 
 void ili_wq_ctrl(int type, int ctrl)
 {
 	switch (type) {
+#if ENABLE_WQ_ESD
 	case WQ_ESD:
 		if (ilits->esd_func_ctrl || ilits->wq_ctrl) {
 			if (!esd_wq) {
@@ -588,7 +557,9 @@ void ili_wq_ctrl(int type, int ctrl)
 			}
 		}
 		break;
+#endif
 	case WQ_BAT:
+#if ENABLE_WQ_BAT
 		if (ENABLE_WQ_BAT || ilits->wq_ctrl) {
 			if (!bat_wq) {
 				ILI_ERR("WQ BAT is null\n");
@@ -605,6 +576,7 @@ void ili_wq_ctrl(int type, int ctrl)
 				ILI_DBG("cancel bat wq\n");
 			}
 		}
+#endif
 		break;
 	default:
 		ILI_ERR("Unknown WQ type, %d\n", type);
@@ -614,14 +586,26 @@ void ili_wq_ctrl(int type, int ctrl)
 
 static void ilitek_tddi_wq_init(void)
 {
+#if ENABLE_WQ_ESD
 	esd_wq = alloc_workqueue("esd_check", WQ_MEM_RECLAIM, 0);
+#endif
+#if ENABLE_WQ_BAT
 	bat_wq = alloc_workqueue("bat_check", WQ_MEM_RECLAIM, 0);
+#endif
 
+#if ENABLE_WQ_ESD
 	WARN_ON(!esd_wq);
+#endif
+#if ENABLE_WQ_BAT
 	WARN_ON(!bat_wq);
+#endif
 
+#if ENABLE_WQ_ESD
 	INIT_DELAYED_WORK(&esd_work, ilitek_tddi_wq_esd_check);
+#endif
+#if ENABLE_WQ_BAT
 	INIT_DELAYED_WORK(&bat_work, ilitek_tddi_wq_bat_check);
+#endif
 
 #if RESUME_BY_DDI
 	resume_by_ddi_wq = create_singlethread_workqueue("resume_by_ddi_wq");
@@ -1701,17 +1685,20 @@ void ili_dev_remove(bool flag)
 
 	gpio_free(ilits->tp_int);
 	gpio_free(ilits->tp_rst);
-
+#if ENABLE_WQ_ESD
 	if (esd_wq != NULL) {
 		cancel_delayed_work_sync(&esd_work);
 		flush_workqueue(esd_wq);
 		destroy_workqueue(esd_wq);
 	}
+#endif
+#if ENABLE_WQ_BAT
 	if (bat_wq != NULL) {
 		cancel_delayed_work_sync(&bat_work);
 		flush_workqueue(bat_wq);
 		destroy_workqueue(bat_wq);
 	}
+#endif
 
 	if (ilits->ws)
 		PM_WAKEUP_UNREGISTER(ilits->ws);
