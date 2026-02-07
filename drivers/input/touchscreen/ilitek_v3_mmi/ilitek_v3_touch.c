@@ -1221,6 +1221,7 @@ void ili_touch_release_all_point(void)
 
 		input_report_key(ilits->input, BTN_TOUCH, 0);
 		input_report_key(ilits->input, BTN_TOOL_FINGER, 0);
+		ilits->touchs = 0;
 	} else {
 		ili_touch_release(0, 0, 0);
 	}
@@ -1308,17 +1309,26 @@ void ili_report_ap_mode(u8 *buf, int len)
 
 	if (ilits->finger) {
 		if (MT_B_TYPE) {
+			u32 touchs = 0;
+
 			for (i = 0; i < ilits->finger; i++) {
 				int slot = touch_info[i].id;
-				if (slot < MAX_TOUCH_NUM && ilits->curt_touch[slot] == 1) {
+				if (slot < MAX_TOUCH_NUM) {
+					touchs |= BIT(slot);
 					ili_touch_press(touch_info[i].x, touch_info[i].y, touch_info[i].pressure, slot);
 				}
 			}
-			for (i = 0; i < MAX_TOUCH_NUM; i++) {
-				if (ilits->curt_touch[i] == 0 && ilits->prev_touch[i] == 1)
-					ili_touch_release(0, 0, i);
-				ilits->prev_touch[i] = ilits->curt_touch[i];
+
+			if (unlikely(ilits->touchs ^ touchs)) {
+				for (i = 0; i < MAX_TOUCH_NUM; i++) {
+					if (BIT(i) & (ilits->touchs ^ touchs)) {
+						ILI_DBG("[XOR]P%d UP!", i);
+						ili_touch_release(0, 0, i);
+					}
+				}
 			}
+
+			ilits->touchs = touchs;
 			input_report_key(ilits->input, BTN_TOUCH, 1);
 			input_report_key(ilits->input, BTN_TOOL_FINGER, 1);
 		} else {
@@ -1330,11 +1340,16 @@ void ili_report_ap_mode(u8 *buf, int len)
 	} else {
 		if (ilits->last_touch) {
 			if (MT_B_TYPE) {
-				for (i = 0; i < MAX_TOUCH_NUM; i++) {
-					if (ilits->curt_touch[i] == 0 && ilits->prev_touch[i] == 1)
-						ili_touch_release(0, 0, i);
-					ilits->prev_touch[i] = ilits->curt_touch[i];
+				if (unlikely(ilits->touchs)) {
+					for (i = 0; i < MAX_TOUCH_NUM; i++) {
+						if (BIT(i) & ilits->touchs) {
+							ILI_DBG("[XOR]P%d UP! (All release)", i);
+							ili_touch_release(0, 0, i);
+						}
+					}
 				}
+
+				ilits->touchs = 0;
 				input_report_key(ilits->input, BTN_TOUCH, 0);
 				input_report_key(ilits->input, BTN_TOOL_FINGER, 0);
 			} else {
