@@ -30,15 +30,28 @@ echo 0 > /proc/sys/net/ipv4/tcp_ecn
 echo 0 > /proc/sys/net/ipv4/tcp_slow_start_after_idle
 echo 1 > /proc/sys/net/ipv4/tcp_no_metrics_save
 
-# VM Tuning
-echo 5 > /proc/sys/vm/dirty_ratio
-echo 2 > /proc/sys/vm/dirty_background_ratio
-echo 500 > /proc/sys/vm/dirty_writeback_centisecs
-echo 300 > /proc/sys/vm/dirty_expire_centisecs
+# ==== VM Tuning 8GB RAM ====
+# Cache reclaim
+echo 60 > /proc/sys/vm/vfs_cache_pressure
 
-# Swappiness tuning for low cpu consumption
-echo 60 > /proc/sys/vm/swappiness
-echo 0 > /proc/sys/vm/page-cluster
+# Dirty writeback
+echo 6    > /proc/sys/vm/dirty_ratio
+echo 3    > /proc/sys/vm/dirty_background_ratio
+echo 1000 > /proc/sys/vm/dirty_writeback_centisecs
+echo 3000 > /proc/sys/vm/dirty_expire_centisecs
+
+# Swap behavior
+echo 30 > /proc/sys/vm/swappiness
+echo 0  > /proc/sys/vm/page-cluster
+
+# Reclaim smoothness
+echo 25 > /proc/sys/vm/watermark_scale_factor
+echo 131072 > /proc/sys/vm/extra_free_kbytes
+
+# Fragmentation control
+echo 20 > /proc/sys/vm/compaction_proactiveness
+
+# ===========================
 
 # Ultra-Low-Latency
 echo 0 > /proc/sys/kernel/sched_schedstats
@@ -59,24 +72,21 @@ echo "Y" > /sys/module/printk/parameters/console_suspend
 # Input boost settings
 echo 100 > /sys/devices/system/cpu/cpu_boost/input_boost_ms
 
-# Enable KSM
-echo 1 > /sys/kernel/mm/ksm/run
-
-# Set the io-scheduler to ssg on all mq support devices
-echo "ssg" > /sys/block/sda/queue/scheduler
-echo 64 > /sys/block/sda/queue/nr_requests
-echo "ssg" > /sys/block/sdb/queue/scheduler
-echo 64 > /sys/block/sdb/queue/nr_requests
-echo "ssg" > /sys/block/sdc/queue/scheduler
-echo 64 > /sys/block/sdc/queue/nr_requests
-echo "ssg" > /sys/block/sdd/queue/scheduler
-echo 64 > /sys/block/sdd/queue/nr_requests
-echo "ssg" > /sys/block/sde/queue/scheduler
-echo 64 > /sys/block/sde/queue/nr_requests
-echo "ssg" > /sys/block/sdf/queue/scheduler
-echo 64 > /sys/block/sdf/queue/nr_requests
-echo "ssg" > /sys/class/block/mmcblk1/queue/scheduler
-echo 64 > /sys/block/mmcblk1/queue/nr_requests
+# Set the io-scheduler to bfq on all mq support devices
+echo "bfq" > /sys/block/sda/queue/scheduler
+echo 128 > /sys/block/sda/queue/nr_requests
+echo "bfq" > /sys/block/sdb/queue/scheduler
+echo 128 > /sys/block/sdb/queue/nr_requests
+echo "bfq" > /sys/block/sdc/queue/scheduler
+echo 128 > /sys/block/sdc/queue/nr_requests
+echo "bfq" > /sys/block/sdd/queue/scheduler
+echo 128 > /sys/block/sdd/queue/nr_requests
+echo "bfq" > /sys/block/sde/queue/scheduler
+echo 128 > /sys/block/sde/queue/nr_requests
+echo "bfq" > /sys/block/sdf/queue/scheduler
+echo 128 > /sys/block/sdf/queue/nr_requests
+echo "bfq" > /sys/class/block/mmcblk1/queue/scheduler
+echo 128 > /sys/block/mmcblk1/queue/nr_requests
 
 # Runtime fs tuning
 echo 0 > /sys/block/sda/queue/iostats
