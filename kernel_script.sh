@@ -12,6 +12,24 @@ echo "2-5" > /dev/cpuset/restricted/cpus
 echo "0-7" > /dev/cpuset/h-foreground
 echo "0-6" > /dev/cpuset/h-background
 
+# Set RPS (Receive Packet Steering) for each rmnet interface
+echo fe > /sys/class/net/rmnet0/queues/rx-0/rps_cpus
+echo fe > /sys/class/net/rmnet1/queues/rx-0/rps_cpus
+echo fe > /sys/class/net/rmnet2/queues/rx-0/rps_cpus
+echo fe > /sys/class/net/rmnet3/queues/rx-0/rps_cpus
+echo fe > /sys/class/net/rmnet4/queues/rx-0/rps_cpus
+echo fe > /sys/class/net/rmnet5/queues/rx-0/rps_cpus
+echo fe > /sys/class/net/rmnet6/queues/rx-0/rps_cpus
+echo fe > /sys/class/net/rmnet7/queues/rx-0/rps_cpus
+
+# Pin Wi-Fi RX to both big cores
+echo c0 > /sys/class/net/wlan0/queues/rx-0/rps_cpus
+
+# Push control packets earlier (safe, low overhead)
+echo 0 > /proc/sys/net/ipv4/tcp_ecn
+echo 0 > /proc/sys/net/ipv4/tcp_slow_start_after_idle
+echo 1 > /proc/sys/net/ipv4/tcp_no_metrics_save
+
 # VM Tuning
 echo 5 > /proc/sys/vm/dirty_ratio
 echo 2 > /proc/sys/vm/dirty_background_ratio
