@@ -2247,7 +2247,6 @@ void init_new_task_load(struct task_struct *p)
 	for (i = 0; i < RAVG_HIST_SIZE_MAX; ++i)
 		p->wts.sum_history[i] = init_load_windows;
 	p->wts.misfit = false;
-	p->wts.rtg_high_prio = false;
 	p->wts.unfilter = sysctl_sched_task_unfilter_period;
 }
 
@@ -3783,7 +3782,6 @@ void walt_sched_init_rq(struct rq *rq)
 	rq->wrq.old_busy_time = 0;
 	rq->wrq.old_estimated_time = 0;
 	rq->wrq.walt_stats.pred_demands_sum_scaled = 0;
-	rq->wrq.walt_stats.nr_rtg_high_prio_tasks = 0;
 	rq->wrq.ed_task = NULL;
 	rq->wrq.curr_table = 0;
 	rq->wrq.prev_top = 0;
