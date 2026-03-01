@@ -619,15 +619,6 @@ static struct ctl_table kern_table[] = {
 		.extra2		= &max_cfs_boost_prio,
 	},
 	{
-		.procname	= "walt_low_latency_task_threshold",
-		.data		= &sysctl_walt_low_latency_task_threshold,
-		.maxlen		= sizeof(unsigned int),
-		.mode		= 0644,
-		.proc_handler	= proc_dointvec_minmax,
-		.extra1		= SYSCTL_ZERO,
-		.extra2		= &one_thousand,
-	},
-	{
 		.procname	= "sched_sync_hint_enable",
 		.data		= &sysctl_sched_sync_hint_enable,
 		.maxlen		= sizeof(unsigned int),
