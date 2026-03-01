@@ -571,9 +571,6 @@ extern void walt_update_cluster_topology(void);
 #define RAVG_HIST_SIZE_MAX  5
 #define NUM_BUSY_BUCKETS 10
 
-#define WALT_LOW_LATENCY_PROCFS	BIT(0)
-#define WALT_LOW_LATENCY_BINDER	BIT(1)
-
 struct walt_task_struct {
 	/*
 	 * 'mark_start' marks the beginning of an event (task waking up, task
