@@ -70,6 +70,12 @@ DECLARE_RESTRICTED_HOOK(android_rvh_find_busiest_group,
 	TP_PROTO(struct sched_group *busiest, struct rq *dst_rq, int *out_balance),
 		TP_ARGS(busiest, dst_rq, out_balance), 1);
 
+struct cfs_rq;
+struct sched_entity;
+DECLARE_RESTRICTED_HOOK(android_rvh_update_deadline,
+	TP_PROTO(struct cfs_rq *cfs_rq, struct sched_entity *se, bool *skip_preempt),
+	TP_ARGS(cfs_rq, se, skip_preempt), 1);
+
 DECLARE_HOOK(android_vh_map_util_freq,
 	TP_PROTO(unsigned long util, unsigned long freq,
 		unsigned long cap, unsigned long *next_freq),
