@@ -59,7 +59,6 @@ extern unsigned int sysctl_sched_ravg_window_nr_ticks;
 extern unsigned int sysctl_sched_many_wakeup_threshold;
 extern unsigned int sysctl_sched_dynamic_ravg_window_enable;
 extern unsigned int sysctl_sched_prefer_spread;
-extern unsigned int sysctl_walt_rtg_cfs_boost_prio;
 extern unsigned int sysctl_sched_sync_hint_enable;
 extern unsigned int sysctl_walt_cpu_high_irqload;
 extern unsigned int sysctl_sched_asym_cap_sibling_freq_match_en;
