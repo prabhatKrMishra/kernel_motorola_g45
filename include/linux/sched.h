@@ -622,7 +622,6 @@ struct walt_task_struct {
 	int				boost;
 	bool				wake_up_idle;
 	bool				misfit;
-	bool				rtg_high_prio;
 	u64				boost_period;
 	u64				boost_expires;
 	u64				last_sleep_ts;
