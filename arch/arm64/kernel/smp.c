@@ -990,7 +990,8 @@ void handle_IPI(int ipinr, struct pt_regs *regs)
 
 void smp_send_reschedule(int cpu)
 {
-	update_ipi_history(cpu);
+	ktime_t now = ktime_get();
+	update_ipi_history(cpu, now);
 	smp_cross_call(cpumask_of(cpu), IPI_RESCHEDULE);
 }
 

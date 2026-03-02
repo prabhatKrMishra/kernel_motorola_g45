@@ -3,7 +3,7 @@
 /* Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
  * Copyright (C) 2006-2007 Adam Belay <abelay@novell.com>
  * Copyright (C) 2009 Intel Corporation
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #define pr_fmt(fmt) "%s: " fmt, KBUILD_MODNAME
@@ -1418,10 +1418,9 @@ static int lpm_cpuidle_select(struct cpuidle_driver *drv,
 }
 
 #ifdef CONFIG_MSM_PM
-void update_ipi_history(int cpu)
+void update_ipi_history(int cpu, ktime_t now)
 {
 	struct ipi_history *history = &per_cpu(cpu_ipi_history, cpu);
-	ktime_t now = ktime_get();
 
 	history->interval[history->current_ptr] =
 			ktime_to_us(ktime_sub(now,
