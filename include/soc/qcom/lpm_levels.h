@@ -21,11 +21,11 @@ struct system_pm_ops {
 
 #if defined(CONFIG_MSM_PM) || defined(CONFIG_MSM_PM_LEGACY)
 uint32_t register_system_pm_ops(struct system_pm_ops *pm_ops);
-void update_ipi_history(int cpu);
+void update_ipi_history(int cpu, ktime_t now);
 #else
 static inline uint32_t register_system_pm_ops(struct system_pm_ops *pm_ops)
 { return -ENODEV; }
-static inline void update_ipi_history(int cpu) {}
+static inline void update_ipi_history(int cpu, ktime_t now) {}
 #endif
 
 #endif
