@@ -3,6 +3,7 @@
 /* Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
  * Copyright (C) 2006-2007 Adam Belay <abelay@novell.com>
  * Copyright (C) 2009 Intel Corporation
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #define pr_fmt(fmt) "%s: " fmt, KBUILD_MODNAME
@@ -698,7 +699,7 @@ static inline uint32_t get_cpus_qos(const struct cpumask *mask)
 }
 
 static int cpu_power_select(struct cpuidle_device *dev,
-		struct lpm_cpu *cpu)
+		struct lpm_cpu *cpu, bool *stop_tick)
 {
 	ktime_t delta_next;
 	int best_level = 0;
@@ -716,6 +717,9 @@ static int cpu_power_select(struct cpuidle_device *dev,
 		goto done_select;
 
 	idx_restrict = cpu->nlevels + 1;
+
+	if (((sleep_us * NSEC_PER_USEC) < TICK_NSEC) && !tick_nohz_tick_stopped())
+		*stop_tick = false;
 
 	for (i = 0; i < cpu->nlevels; i++) {
 		if (!lpm_cpu_mode_allow(dev->cpu, i, true))
@@ -1410,7 +1414,7 @@ static int lpm_cpuidle_select(struct cpuidle_driver *drv,
 	if (!cpu)
 		return 0;
 
-	return cpu_power_select(dev, cpu);
+	return cpu_power_select(dev, cpu, stop_tick);
 }
 
 #ifdef CONFIG_MSM_PM
@@ -1511,7 +1515,6 @@ exit:
 		biastimer_cancel();
 		cpu->bias = 0;
 	}
-	local_irq_enable();
 	return idx;
 }
 
