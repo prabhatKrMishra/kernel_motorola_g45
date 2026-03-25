@@ -105,6 +105,7 @@ static int sde_backlight_device_update_status(struct backlight_device *bd)
 	struct sde_vm_ops *vm_ops;
 	u32 bl_max_level = 0;
 	u32 brightness_max_level = 0;
+	u32 bl_min_level = 0;
 
 	sde_kms = _sde_connector_get_kms(&c_conn->base);
 	if (!sde_kms) {
@@ -124,12 +125,14 @@ static int sde_backlight_device_update_status(struct backlight_device *bd)
 		bl_max_level = dsi_display->panel->bl_config.bl_max_level;
 		brightness_max_level =
 			dsi_display->panel->bl_config.brightness_max_level;
+		bl_min_level = dsi_display->panel->bl_config.bl_min_level;
 	} else if (c_conn->connector_type == DRM_MODE_CONNECTOR_eDP) {
 		dp_panel = (struct dp_panel *) c_conn->drv_panel;
 		if (dp_panel) {
 			bl_max_level = dp_panel->bl_config.bl_max_level;
 			brightness_max_level =
 				dp_panel->bl_config.brightness_max_level;
+			bl_min_level = dp_panel->bl_config.bl_min_level;
 		}
 	}
 
@@ -138,8 +141,8 @@ static int sde_backlight_device_update_status(struct backlight_device *bd)
 	if (brightness > c_conn->thermal_max_brightness)
 		brightness = c_conn->thermal_max_brightness;
 
-	if(brightness && brightness < display->panel->bl_config.bl_min_level)
-		brightness = display->panel->bl_config.bl_min_level;
+	if(brightness && brightness < bl_min_level)
+		brightness = bl_min_level;
 
 	/* map UI brightness into driver backlight level with rounding */
 	bl_lvl = mult_frac(brightness, bl_max_level, brightness_max_level);
@@ -232,11 +235,11 @@ static int sde_backlight_setup(struct sde_connector *c_conn,
 			return 0;
 	} else if (c_conn->connector_type == DRM_MODE_CONNECTOR_eDP) {
 		dp_panel = (struct dp_panel *) c_conn->drv_panel;
-		if (dp_panel)
+		if (dp_panel) {
 			brightness_max_level =
 				dp_panel->bl_config.brightness_max_level;
 			brightness_default_level = brightness_max_level;
-		else {
+		} else {
 			brightness_max_level = MAX_BRIGHTNESS_LEVEL;
 			brightness_default_level = brightness_max_level;
 		}
