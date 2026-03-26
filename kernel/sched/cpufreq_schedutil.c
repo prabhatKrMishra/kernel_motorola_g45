@@ -30,6 +30,9 @@ struct sugov_tunables {
 struct sugov_policy {
 	struct cpufreq_policy	*policy;
 
+	unsigned int		*util_freq;
+	unsigned long		max_cap;
+
 	u64 last_ws;
 	u64 curr_cycles;
 	u64 last_cyc_update_time;
@@ -189,6 +192,74 @@ static bool sugov_update_next_freq(struct sugov_policy *sg_policy, u64 time,
 	return true;
 }
 
+#define DEFAULT_DVFS_MARGIN 20
+static unsigned int sched_capacity_margin_dvfs = DEFAULT_DVFS_MARGIN;
+unsigned int util_scale;
+
+static void update_util_scale(void)
+{
+	util_scale = (SCHED_CAPACITY_SCALE * 100) / (100 - sched_capacity_margin_dvfs);
+}
+
+static int init_nonlinear_table(struct sugov_policy *sg_policy)
+{
+	struct cpufreq_policy *policy = sg_policy->policy;
+	unsigned long max_cap = arch_scale_cpu_capacity(policy->cpu);
+	struct cpufreq_frequency_table *pos;
+	int last_valid_idx = -1;
+	int i, j;
+
+	if (!policy->freq_table)
+		return -EINVAL;
+
+	cpufreq_for_each_entry_idx(pos, policy->freq_table, i) {
+		if (pos->frequency != CPUFREQ_ENTRY_INVALID)
+			last_valid_idx = i;
+	}
+
+	if (last_valid_idx < 0)
+		return -EINVAL;
+
+	sg_policy->max_cap = max_cap;
+	sg_policy->util_freq = kcalloc(max_cap + 1, sizeof(unsigned int), GFP_KERNEL);
+	if (!sg_policy->util_freq)
+		return -ENOMEM;
+
+	for (i = last_valid_idx; i >= 0; i--) {
+		unsigned long cap, next_cap;
+		unsigned int freq;
+
+		freq = policy->freq_table[i].frequency;
+		if (freq == CPUFREQ_ENTRY_INVALID)
+			continue;
+
+		cap = mult_frac(freq, max_cap, policy->cpuinfo.max_freq);
+		if (cap == 0)
+			continue;
+
+		next_cap = 0;
+		for (j = i - 1; j >= 0; j--) {
+			unsigned int next_freq = policy->freq_table[j].frequency;
+			if (next_freq != CPUFREQ_ENTRY_INVALID) {
+				next_cap = mult_frac(next_freq, max_cap, policy->cpuinfo.max_freq);
+				break;
+			}
+		}
+
+		for (j = cap; j > next_cap; j--) {
+			sg_policy->util_freq[j] = freq;
+		}
+	}
+
+	return 0;
+}
+
+static void free_nonlinear_table(struct sugov_policy *sg_policy)
+{
+	kfree(sg_policy->util_freq);
+	sg_policy->util_freq = NULL;
+}
+
 static unsigned long freq_to_util(struct sugov_policy *sg_policy,
 				  unsigned int freq)
 {
@@ -285,21 +356,20 @@ static void sugov_deferred_update(struct sugov_policy *sg_policy, u64 time,
  * @util: Current CPU utilization.
  * @max: CPU capacity.
  *
- * If the utilization is frequency-invariant, choose the new frequency to be
- * proportional to it, that is
+ * First, invoke a vendor hook (trace_android_vh_map_util_freq) to allow
+ * vendor-specific frequency overrides.
  *
- * next_freq = C * max_freq * util / max
+ * If not overridden, apply a configurable DVFS headroom margin to the
+ * current utilization (replacing the legacy static 1.25x multiplier) and
+ * clamp it to the CPU's maximum capacity.
  *
- * Otherwise, approximate the would-be frequency-invariant utilization by
- * util_raw * (curr_freq / max_freq) which leads to
+ * The resulting scaled utilization is then used as a direct index into a
+ * precomputed O(1) lookup array to find the lowest frequency capable of
+ * handling the demand. This eliminates linear math overhead on the hotpath
+ * and accurately selects frequencies based on discrete hardware OPP boundaries.
  *
- * next_freq = C * curr_freq * util_raw / max
- *
- * Take C = 1.25 for the frequency tipping point at (util / max) = 0.8.
- *
- * The lowest driver-supported frequency which is equal or greater than the raw
- * next_freq (as calculated above) is returned, subject to policy min/max and
- * cpufreq driver limitations.
+ * The final frequency is resolved against driver limitations and policy
+ * min/max constraints before being returned.
  */
 static unsigned int get_next_freq(struct sugov_policy *sg_policy,
 				  unsigned long util, unsigned long max)
@@ -310,10 +380,17 @@ static unsigned int get_next_freq(struct sugov_policy *sg_policy,
 	unsigned long next_freq = 0;
 
 	trace_android_vh_map_util_freq(util, freq, max, &next_freq);
-	if (next_freq)
+
+	if (next_freq) {
 		freq = next_freq;
-	else
-		freq = map_util_freq(util, freq, max);
+	} else {
+		unsigned long scaled_util = (util * util_scale) >> SCHED_CAPACITY_SHIFT;
+
+		if (scaled_util > sg_policy->max_cap)
+			scaled_util = sg_policy->max_cap;
+
+		freq = sg_policy->util_freq[scaled_util];
+	}
 
 	trace_sugov_next_freq(policy->cpu, util, max, freq);
 	if (freq == sg_policy->cached_raw_freq && !sg_policy->need_freq_update)
@@ -1268,6 +1345,13 @@ static int sugov_init(struct cpufreq_policy *policy)
 
 	stale_ns = sched_ravg_window + (sched_ravg_window >> 3);
 
+	update_util_scale();
+	ret = init_nonlinear_table(sg_policy);
+	if (ret) {
+		pr_err("Failed to init nonlinear freq table\n");
+		goto fail;
+	}
+
 	sugov_tunables_restore(policy);
 
 	ret = kobject_init_and_add(&tunables->attr_set.kobj, &sugov_tunables_ktype,
@@ -1317,6 +1401,8 @@ static void sugov_exit(struct cpufreq_policy *policy)
 		sugov_clear_global_tunables();
 
 	mutex_unlock(&global_tunables_lock);
+
+	free_nonlinear_table(sg_policy);
 
 	sugov_kthread_stop(sg_policy);
 	sugov_policy_free(sg_policy);
