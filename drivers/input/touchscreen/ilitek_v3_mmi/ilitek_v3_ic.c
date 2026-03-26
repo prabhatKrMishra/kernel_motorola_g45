@@ -532,6 +532,11 @@ int ili_ice_mode_write(u32 addr, u32 data, int len)
 	int ret = 0, i;
 	u8 txbuf[64] = {0};
 
+	if (len + 4 > sizeof(txbuf)) {
+		ILI_ERR("ICE write length too large (%d), aborting to prevent stack overflow\n", len);
+		return -EINVAL;
+	}
+
 	if (!atomic_read(&ilits->ice_stat)) {
 		ILI_ERR("ice mode not enabled\n");
 		return -1;
