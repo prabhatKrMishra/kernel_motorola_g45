@@ -25,6 +25,10 @@ struct sugov_tunables {
 	unsigned int		hispeed_freq;
 	unsigned int		rtg_boost_freq;
 	bool			pl;
+
+	/* Advanced IO Wait Boosting */
+	unsigned int		boost_reset_delay_ticks;
+	unsigned int		boost_decay_delay_ticks;
 };
 
 struct sugov_policy {
@@ -39,6 +43,9 @@ struct sugov_policy {
 	unsigned long hispeed_util;
 	unsigned long rtg_boost_util;
 	unsigned long max;
+
+	/* Timestamp for boost decay delay logic */
+	u64			last_update_time;
 
 	raw_spinlock_t		update_lock;	/* For shared policies */
 	u64			last_freq_update_time;
@@ -455,8 +462,11 @@ static bool sugov_iowait_reset(struct sugov_cpu *sg_cpu, u64 time,
 {
 	s64 delta_ns = time - sg_cpu->last_update;
 
-	/* Reset boost only if a tick has elapsed since last request */
-	if (delta_ns <= TICK_NSEC)
+	/*If boost_reset_delay_ticks is set, extend the reset window */
+	unsigned int reset_ns = TICK_NSEC * sg_cpu->sg_policy->tunables->boost_reset_delay_ticks;
+
+	/* Reset boost only if the configured time has elapsed since last request */
+	if (delta_ns <= reset_ns)
 		return false;
 
 	sg_cpu->iowait_boost = set_iowait_boost ? IOWAIT_BOOST_MIN : 0;
@@ -532,6 +542,7 @@ static unsigned long sugov_iowait_apply(struct sugov_cpu *sg_cpu, u64 time,
 					unsigned long util, unsigned long max)
 {
 	unsigned long boost;
+	struct sugov_policy *sg_policy = sg_cpu->sg_policy;
 
 	/* No boost currently required */
 	if (!sg_cpu->iowait_boost)
@@ -541,16 +552,39 @@ static unsigned long sugov_iowait_apply(struct sugov_cpu *sg_cpu, u64 time,
 	if (sugov_iowait_reset(sg_cpu, time, false))
 		return util;
 
-	if (!sg_cpu->iowait_boost_pending) {
-		/*
-		 * No boost pending; reduce the boost value.
-		 */
-		sg_cpu->iowait_boost >>= 1;
-		if (sg_cpu->iowait_boost < IOWAIT_BOOST_MIN) {
-			sg_cpu->iowait_boost = 0;
-			return util;
-		}
-	}
+    /*
+     * Handle the decay of the boost value when no new IO wait requests
+     * are pending. The 'boost_decay_delay_ticks' tunable allows this decay
+     * to be delayed, creating a "sustain" window to smooth out boost
+     * fluctuations during sustained IO operations.
+     */
+    if (!sg_cpu->iowait_boost_pending) {
+        bool should_decay = true;
+
+        /*
+         * Sustain the current boost level if the apply window is
+         * configured and the elapsed time is within that window.
+         * This prevents premature frequency drops during bursts of
+         * IO activity.
+         */
+        if (sg_policy->tunables->boost_decay_delay_ticks &&
+            (time - sg_policy->last_update_time <=
+             (sg_policy->tunables->boost_decay_delay_ticks * TICK_NSEC))) {
+            should_decay = false;
+        }
+
+        if (should_decay) {
+            /*
+             * No boost pending and sustain window expired;
+             * decay the boost value by half.
+             */
+            sg_cpu->iowait_boost >>= 1;
+            if (sg_cpu->iowait_boost < IOWAIT_BOOST_MIN) {
+                sg_cpu->iowait_boost = 0;
+                return util;
+            }
+        }
+    }
 
 	sg_cpu->iowait_boost_pending = false;
 
@@ -653,6 +687,9 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 
 	if (!sugov_should_update_freq(sg_policy, time))
 		return;
+
+	/* Update policy timestamp for apply_ticks logic */
+	sg_policy->last_update_time = time;
 
 	/* Limits may have changed, don't skip frequency update */
 	busy = use_pelt() && !sg_policy->need_freq_update &&
@@ -798,6 +835,14 @@ sugov_update_shared(struct update_util_data *hook, u64 time, unsigned int flags)
 
 	if (sugov_should_update_freq(sg_policy, time) &&
 	    !(flags & SCHED_CPUFREQ_CONTINUE)) {
+
+		/*
+		 * Update policy timestamp for apply_ticks logic.
+		 * This must be done BEFORE calling sugov_iowait_apply
+		 * to ensure the sustain window resets correctly.
+		 */
+		sg_policy->last_update_time = time;
+
 		next_f = sugov_next_freq_shared(sg_cpu, time);
 
 		if (sg_policy->policy->fast_switch_enabled)
@@ -1021,12 +1066,50 @@ static ssize_t pl_store(struct gov_attr_set *attr_set, const char *buf,
 	return count;
 }
 
+/* IO Wait Reset Ticks */
+static ssize_t boost_reset_delay_ticks_show(struct gov_attr_set *attr_set, char *buf)
+{
+	struct sugov_tunables *tunables = to_sugov_tunables(attr_set);
+	return sprintf(buf, "%u\n", tunables->boost_reset_delay_ticks);
+}
+
+static ssize_t boost_reset_delay_ticks_store(struct gov_attr_set *attr_set, const char *buf,
+					size_t count)
+{
+	struct sugov_tunables *tunables = to_sugov_tunables(attr_set);
+
+	if (kstrtouint(buf, 10, &tunables->boost_reset_delay_ticks))
+		return -EINVAL;
+
+	return count;
+}
+
+/* IO Wait Apply Ticks */
+static ssize_t boost_decay_delay_ticks_show(struct gov_attr_set *attr_set, char *buf)
+{
+	struct sugov_tunables *tunables = to_sugov_tunables(attr_set);
+	return sprintf(buf, "%u\n", tunables->boost_decay_delay_ticks);
+}
+
+static ssize_t boost_decay_delay_ticks_store(struct gov_attr_set *attr_set, const char *buf,
+					size_t count)
+{
+	struct sugov_tunables *tunables = to_sugov_tunables(attr_set);
+
+	if (kstrtouint(buf, 10, &tunables->boost_decay_delay_ticks))
+		return -EINVAL;
+
+	return count;
+}
+
 static struct governor_attr up_rate_limit_us = __ATTR_RW(up_rate_limit_us);
 static struct governor_attr down_rate_limit_us = __ATTR_RW(down_rate_limit_us);
 static struct governor_attr hispeed_load = __ATTR_RW(hispeed_load);
 static struct governor_attr hispeed_freq = __ATTR_RW(hispeed_freq);
 static struct governor_attr rtg_boost_freq = __ATTR_RW(rtg_boost_freq);
 static struct governor_attr pl = __ATTR_RW(pl);
+static struct governor_attr boost_reset_delay_ticks = __ATTR_RW(boost_reset_delay_ticks);
+static struct governor_attr boost_decay_delay_ticks = __ATTR_RW(boost_decay_delay_ticks);
 
 static struct attribute *sugov_attrs[] = {
 	&up_rate_limit_us.attr,
@@ -1035,6 +1118,8 @@ static struct attribute *sugov_attrs[] = {
 	&hispeed_freq.attr,
 	&rtg_boost_freq.attr,
 	&pl.attr,
+	&boost_reset_delay_ticks.attr,
+	&boost_decay_delay_ticks.attr,
 	NULL
 };
 ATTRIBUTE_GROUPS(sugov);
@@ -1235,6 +1320,10 @@ static int sugov_init(struct cpufreq_policy *policy)
 	tunables->down_rate_limit_us = cpufreq_policy_transition_delay_us(policy);
 	tunables->hispeed_load = DEFAULT_HISPEED_LOAD;
 	tunables->hispeed_freq = 0;
+
+	/* Defaults matching standard behavior */
+	tunables->boost_reset_delay_ticks = 1;  /* Reset after 1 tick */
+	tunables->boost_decay_delay_ticks = 0;  /* Decay immediately */
 
 	switch (policy->cpu) {
 	default:
