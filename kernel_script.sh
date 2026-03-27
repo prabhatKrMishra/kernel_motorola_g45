@@ -30,6 +30,19 @@ echo 0 > /proc/sys/net/ipv4/tcp_ecn
 echo 0 > /proc/sys/net/ipv4/tcp_slow_start_after_idle
 echo 1 > /proc/sys/net/ipv4/tcp_no_metrics_save
 
+# Set governor settings for CPU scaling
+echo "schedutil" > /sys/devices/system/cpu/cpufreq/policy0/scaling_governor
+echo 500 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/up_rate_limit_us
+echo 1000 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/down_rate_limit_us
+echo 4 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/boost_reset_delay_ticks
+echo 1 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/boost_decay_delay_ticks
+
+echo "schedutil" > /sys/devices/system/cpu/cpufreq/policy6/scaling_governor
+echo 500 > /sys/devices/system/cpu/cpufreq/policy6/schedutil/up_rate_limit_us
+echo 1000 > /sys/devices/system/cpu/cpufreq/policy6/schedutil/down_rate_limit_us
+echo 4 > /sys/devices/system/cpu/cpufreq/policy6/schedutil/boost_reset_delay_ticks
+echo 1 > /sys/devices/system/cpu/cpufreq/policy6/schedutil/boost_decay_delay_ticks
+
 # ==== VM Tuning 8GB RAM ====
 # Cache reclaim
 echo 60 > /proc/sys/vm/vfs_cache_pressure
