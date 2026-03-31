@@ -6856,7 +6856,7 @@ int msm_comm_qbuf_cache_operations(struct msm_vidc_inst *inst,
 			rc = msm_smem_cache_operations(mbuf->smem[i].dma_buf,
 					cache_op, offset, size, inst->sid);
 			if (rc)
-				print_vidc_buffer(VIDC_ERR,
+				print_vidc_buffer(VIDC_HIGH,
 					"qbuf cache ops failed", inst, mbuf);
 		}
 	}
@@ -6918,7 +6918,7 @@ int msm_comm_dqbuf_cache_operations(struct msm_vidc_inst *inst,
 			rc = msm_smem_cache_operations(mbuf->smem[i].dma_buf,
 					cache_op, offset, size, inst->sid);
 			if (rc)
-				print_vidc_buffer(VIDC_ERR,
+				print_vidc_buffer(VIDC_HIGH,
 					"dqbuf cache ops failed", inst, mbuf);
 		}
 	}
