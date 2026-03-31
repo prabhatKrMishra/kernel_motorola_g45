@@ -8850,12 +8850,6 @@ static int dsi_display_set_roi(struct dsi_display *display,
 			return rc;
 		}
 
-		rc = dsi_panel_send_roi_dcs(display->panel, i, &ctrl_roi);
-		if (rc) {
-			DSI_ERR("dsi_panel_set_roi twice failed rc %d\n", rc);
-			return rc;
-		}
-
 		/* re-program the ctrl with the timing based on the new roi */
 		rc = dsi_ctrl_timing_setup(ctrl->ctrl);
 		if (rc) {
