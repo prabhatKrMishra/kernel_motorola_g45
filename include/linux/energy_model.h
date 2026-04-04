@@ -105,80 +105,61 @@ int em_register_perf_domain(cpumask_t *span, unsigned int nr_states,
  * @max_util	: highest utilization among CPUs of the domain
  * @sum_util	: sum of the utilization of all CPUs in the domain
  *
+ * To ensure Energy Aware Scheduling (EAS) places tasks based on the exact
+ * frequency the governor will actually select, this function applies the
+ * same DVFS headroom margin to @max_util as schedutil's non-linear table
+ * lookup.
+ *
+ * It then iterates through the performance domain's capacity states to find
+ * the lowest OPP that provides sufficient capacity to handle the scaled
+ * utilization demand (where OPP_Capacity = frequency * scale_cpu / max_freq).
+ *
  * Return: the sum of the energy consumed by the CPUs of the domain assuming
- * a capacity state satisfying the max utilization of the domain.
+ * a capacity state satisfying the scaled max utilization of the domain.
  */
 static inline unsigned long em_pd_energy(struct em_perf_domain *pd,
 				unsigned long max_util, unsigned long sum_util)
 {
-	unsigned long freq, scale_cpu;
+	unsigned long scale_cpu;
 	struct em_cap_state *cs;
 	int i, cpu;
+	unsigned long max_freq;
+	unsigned long scaled_util;
+	extern unsigned int util_scale;
 
 	if (!sum_util)
 		return 0;
 
-	/*
-	 * In order to predict the capacity state, map the utilization of the
-	 * most utilized CPU of the performance domain to a requested frequency,
-	 * like schedutil.
-	 */
 	cpu = cpumask_first(to_cpumask(pd->cpus));
 	scale_cpu = arch_scale_cpu_capacity(cpu);
-	cs = &pd->table[pd->nr_cap_states - 1];
-	freq = map_util_freq(max_util, cs->frequency, scale_cpu);
+
+	max_freq = pd->table[pd->nr_cap_states - 1].frequency;
+	scaled_util = (max_util * util_scale) >> SCHED_CAPACITY_SHIFT;
+	if (scaled_util > scale_cpu)
+		scaled_util = scale_cpu;
 
 	/*
-	 * Find the lowest capacity state of the Energy Model above the
-	 * requested frequency.
+	 * Iterate through the EM table to find the capacity state.
+	 * We find the lowest OPP where (OPP_Capacity >= scaled_util).
+	 *
+	 * OPP_Capacity = (cs->frequency * scale_cpu) / max_freq
 	 */
+	cs = &pd->table[pd->nr_cap_states - 1]; /* Default to max OPP */
 	for (i = 0; i < pd->nr_cap_states; i++) {
+		unsigned long cs_cap;
+
 		cs = &pd->table[i];
-		if (cs->frequency >= freq)
+
+		cs_cap = (cs->frequency * scale_cpu) / max_freq;
+
+		if (cs_cap >= scaled_util)
 			break;
 	}
 
 	/*
-	 * The capacity of a CPU in the domain at that capacity state (cs)
-	 * can be computed as:
-	 *
-	 *             cs->freq * scale_cpu
-	 *   cs->cap = --------------------                          (1)
-	 *                 cpu_max_freq
-	 *
-	 * So, ignoring the costs of idle states (which are not available in
-	 * the EM), the energy consumed by this CPU at that capacity state is
-	 * estimated as:
-	 *
-	 *             cs->power * cpu_util
-	 *   cpu_nrg = --------------------                          (2)
-	 *                   cs->cap
-	 *
-	 * since 'cpu_util / cs->cap' represents its percentage of busy time.
-	 *
-	 *   NOTE: Although the result of this computation actually is in
-	 *         units of power, it can be manipulated as an energy value
-	 *         over a scheduling period, since it is assumed to be
-	 *         constant during that interval.
-	 *
-	 * By injecting (1) in (2), 'cpu_nrg' can be re-expressed as a product
-	 * of two terms:
-	 *
-	 *             cs->power * cpu_max_freq   cpu_util
-	 *   cpu_nrg = ------------------------ * ---------          (3)
-	 *                    cs->freq            scale_cpu
-	 *
-	 * The first term is static, and is stored in the em_cap_state struct
-	 * as 'cs->cost'.
-	 *
-	 * Since all CPUs of the domain have the same micro-architecture, they
-	 * share the same 'cs->cost', and the same CPU capacity. Hence, the
-	 * total energy of the domain (which is the simple sum of the energy of
-	 * all of its CPUs) can be factorized as:
-	 *
-	 *            cs->cost * \Sum cpu_util
-	 *   pd_nrg = ------------------------                       (4)
-	 *                  scale_cpu
+	 * Calculate energy using the selected capacity state (cs).
+	 * cs->cost = cs->power * max_freq / cs->frequency
+	 * Energy = cs->cost * sum_util / scale_cpu
 	 */
 	return cs->cost * sum_util / scale_cpu;
 }
