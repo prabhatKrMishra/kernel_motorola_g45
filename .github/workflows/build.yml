@@ -1,0 +1,42 @@
+name: Build Motorola Kernel
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Install deps
+      run: |
+        sudo apt update
+        sudo apt install -y bc bison build-essential flex curl zip \
+        libssl-dev libelf-dev clang lld python3
+
+    - name: Clone Clang
+      run: |
+        git clone https://github.com/kdrag0n/proton-clang --depth=1 clang
+
+    - name: Set env
+      run: |
+        echo "ARCH=arm64" >> $GITHUB_ENV
+        echo "SUBARCH=arm64" >> $GITHUB_ENV
+        echo "PATH=$(pwd)/clang/bin:$PATH" >> $GITHUB_ENV
+
+    - name: Build Kernel
+      run: |
+        chmod +x build_kernel.sh
+        ./build_kernel.sh
+
+    - name: Upload
+      uses: actions/upload-artifact@v3
+      with:
+        name: kernel
+        path: |
+          out/arch/arm64/boot/
