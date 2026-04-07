@@ -181,7 +181,7 @@ static bool sugov_update_next_freq(struct sugov_policy *sg_policy, u64 time,
 	return true;
 }
 
-#define DEFAULT_DVFS_MARGIN 20
+#define DEFAULT_DVFS_MARGIN 5
 static unsigned int sched_capacity_margin_dvfs = DEFAULT_DVFS_MARGIN;
 unsigned int util_scale;
 
