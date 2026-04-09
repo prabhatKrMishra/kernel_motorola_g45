@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) 2015-2021, The Linux Foundation. All rights reserved.
  */
 
 #define pr_fmt(fmt)	"%s:%d: " fmt, __func__, __LINE__
 
 #include <linux/platform_device.h>
+#include <linux/version.h>
 #include <linux/module.h>
 #include <linux/fs.h>
 #include <linux/file.h>
@@ -1396,7 +1398,7 @@ static void sde_hw_rotator_map_vaddr(struct sde_dbg_buf *dbgbuf,
 static void sde_hw_rotator_unmap_vaddr(struct sde_dbg_buf *dbgbuf)
 {
 	if (dbgbuf->vaddr) {
-		dma_buf_kunmap(dbgbuf->dmabuf, 0, dbgbuf->vaddr);
+		dma_buf_vunmap(dbgbuf->dmabuf, dbgbuf->vaddr);
 		dma_buf_end_cpu_access(dbgbuf->dmabuf, DMA_FROM_DEVICE);
 	}
 

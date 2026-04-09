@@ -6622,6 +6622,11 @@ static int panel_class_create(struct platform_device *pdev)
 				if (error)
 					break;
 			}
+			/*
+			 * FIX: Exit the retry loop if kdev is valid and we have
+			 * attempted creation. Retrying immediately serves no purpose.
+			 */
+			break;
 		} else {
 			DSI_ERR("drm_conn->kdev is NULL, retry %d times\n", j);
 		}

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
+ * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) 2015-2020, The Linux Foundation. All rights reserved.
  */
 #define pr_fmt(fmt)	"%s:%d: " fmt, __func__, __LINE__
@@ -13,6 +14,7 @@
 #include <linux/delay.h>
 #include <linux/wait.h>
 #include <linux/of.h>
+#include <linux/version.h>
 #include <media/v4l2-ioctl.h>
 #include <media/v4l2-event.h>
 #include <media/videobuf2-v4l2.h>
@@ -3414,7 +3416,7 @@ static int sde_rotator_probe(struct platform_device *pdev)
 	SDEDEV_DBG(&pdev->dev, "SDE v4l2 rotator probed\n");
 
 	/* sde rotator device struct */
-	rot_dev = kzalloc(sizeof(struct sde_rotator_device), GFP_KERNEL);
+	rot_dev = kvzalloc(sizeof(struct sde_rotator_device), GFP_KERNEL);
 	if (!rot_dev)
 		return -ENOMEM;
 
@@ -3529,7 +3531,7 @@ error_m2m_init:
 error_rotator_core_init:
 	sde_rotator_base_destroy(rot_dev->mdata);
 error_rotator_base_init:
-	kfree(rot_dev);
+	kvfree(rot_dev);
 	return ret;
 }
 
@@ -3557,7 +3559,7 @@ static int sde_rotator_remove(struct platform_device *pdev)
 	v4l2_m2m_release(rot_dev->m2m_dev);
 	sde_rotator_core_destroy(rot_dev->mgr);
 	sde_rotator_base_destroy(rot_dev->mdata);
-	kfree(rot_dev);
+	kvfree(rot_dev);
 	return 0;
 }
 
