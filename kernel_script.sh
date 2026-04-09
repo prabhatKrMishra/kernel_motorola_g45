@@ -32,12 +32,12 @@ echo 1 > /proc/sys/net/ipv4/tcp_no_metrics_save
 
 # Set governor settings for CPU scaling
 echo "schedutil" > /sys/devices/system/cpu/cpufreq/policy0/scaling_governor
-echo 500 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/up_rate_limit_us
-echo 2000 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/down_rate_limit_us
+echo 1000 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/up_rate_limit_us
+echo 20000 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/down_rate_limit_us
 
 echo "schedutil" > /sys/devices/system/cpu/cpufreq/policy6/scaling_governor
-echo 500 > /sys/devices/system/cpu/cpufreq/policy6/schedutil/up_rate_limit_us
-echo 2000 > /sys/devices/system/cpu/cpufreq/policy6/schedutil/down_rate_limit_us
+echo 1000 > /sys/devices/system/cpu/cpufreq/policy6/schedutil/up_rate_limit_us
+echo 20000 > /sys/devices/system/cpu/cpufreq/policy6/schedutil/down_rate_limit_us
 
 # ==== VM Tuning 8GB RAM ====
 # Cache reclaim
