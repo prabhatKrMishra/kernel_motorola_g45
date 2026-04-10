@@ -1,50 +1,49 @@
+# SPDX-License-Identifier: GPL-2.0
 config TMEMORY
-	tristate "tmemory module"
-	depends on BLOCK
-	default n
-	help
-	  Support tmemory
+    tristate "Tmemory write-back cache support"
+    depends on BLOCK
+    help
+      Tmemory is a volatile write-back cache that sits between the
+      filesystem and a block device (like UFS/eMMC). It absorbs random
+      writes into RAM and flushes them sequentially in the background
+      to improve IO performance.
+
+      To compile this as a module, choose M here.
 
 config TMEMORY_CRYPTO
-	bool "tmemory crypto"
-	depends on TMEMORY
-	depends on BLK_INLINE_ENCRYPTION
-	default n
-	help
-	  enable tmemory crypto
+    bool "Tmemory inline encryption support"
+    depends on TMEMORY
+    depends on BLK_INLINE_ENCRYPTION
+    help
+      Enable support for handling hardware inline encryption contexts
+      (ICE/FBE) within the tmemory cache.
 
 config TMEMORY_DEBUG
-	bool "tmemory debug"
-	depends on TMEMORY
-	default n
-	help
-	  use tmemory debug log
-
-config TMEMORY_MIGRATION
-	bool "tmemory page migration"
-	depends on TMEMORY
-	depends on TMEMORY_CRYPTO
-	default n
-	help
-	  support page migration
-
-config TMEMORY_SWITCH_TIME_DEFAULT
-	int "tmemory switch time's default value"
-	depends on TMEMORY
-	default "5000"
-	help
-	  new bio will be blocked after this time.
+    bool "Tmemory debug logging"
+    depends on TMEMORY
+    help
+      Enable verbose debug logging for tmemory. This will output
+      many messages to the kernel log.
 
 config TMEMORY_FAULT_INJECTION
-	bool "tmemory fault injection"
-	depends on TMEMORY
-	default n
-	help
-	  support fault injection
+    bool "Tmemory fault injection"
+    depends on TMEMORY
+    help
+      Allow injecting faults (delays, alloc failures, panics) into
+      tmemory for testing purposes.
 
-config TMEMORY_PANIC_NOCLOSE
-	bool "tmemory panic noclose"
-	depends on TMEMORY
-	default n
-	help
-	  support when panic tmemory not to close
+config TMEMORY_MIGRATION
+    bool "Tmemory page migration"
+    depends on TMEMORY
+    depends on TMEMORY_CRYPTO
+    help
+      Allow the kernel's memory reclaim to migrate tmemory cached
+      pages to other physical RAM locations.
+
+config TMEMORY_SWITCH_TIME_DEFAULT
+    int "Default switch-off timeout (ms)"
+    depends on TMEMORY
+    default "5000"
+    help
+      Default time in milliseconds to wait for dirty data to flush
+      when switching tmemory off before blocking new IOs.

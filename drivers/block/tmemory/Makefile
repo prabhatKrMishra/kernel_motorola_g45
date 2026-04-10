@@ -1,8 +1,20 @@
-KBUILD_OPTIONS += CONFIG_TMEMORY=m
-KBUILD_OPTIONS += OPLUS_OUT_OF_TREE_KO=y
+# SPDX-License-Identifier: GPL-2.0
+#
+# Makefile for the Tmemory block device driver
+#
+# 10 April 2026, Prabhat Kumar Mishra <mprabhat774@gmail.com>
+# Rewritten to integrate in kernel tree
+#
 
-KERNEL_SRC ?= /lib/modules/$(shell uname -r)/build
-M ?= $(shell pwd)
+obj-$(CONFIG_TMEMORY)		+= tmemory.o
 
-modules modules_install clean:
-	$(MAKE) -C $(KERNEL_SRC) M=$(M) $(KBUILD_OPTIONS) $(@)
+tmemory-y := main.o \
+         io.o \
+         shrinker.o \
+         util.o \
+         sysfs.o
+
+tmemory-$(CONFIG_TMEMORY_CRYPTO)		+= crypt.o
+tmemory-$(CONFIG_TMEMORY_FAULT_INJECTION)	+= fault_inject.o
+
+# ccflags-y += -Wno-incompatible-pointer-types -Wno-format -Wno-unused-variable -Wno-implicit-function-declaration -Wno-int-conversion -Wno-declaration-after-statement
