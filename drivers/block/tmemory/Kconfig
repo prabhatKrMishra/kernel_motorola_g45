@@ -10,6 +10,13 @@ config TMEMORY
 
       To compile this as a module, choose M here.
 
+config TMEMORY_AUTO_MEMORY
+    bool "tmemory automatic memory management"
+    depends on TMEMORY
+    default y
+    help
+      Automatically pause tmemory when Linux detects low RAM.
+
 config TMEMORY_CRYPTO
     bool "Tmemory inline encryption support"
     depends on TMEMORY

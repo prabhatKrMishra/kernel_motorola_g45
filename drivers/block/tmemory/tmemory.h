@@ -45,6 +45,8 @@
 #endif
 #include <linux/semaphore.h>
 #include <linux/delay.h>
+#include <linux/memory.h>
+#include <linux/notifier.h>
 
 #define SECTOR_SHIFT			9
 
@@ -101,24 +103,27 @@
 #define TMEMORY_SWITCH_ALLMASK            0xffff
 #define TMEMORY_SWITCH_BITMASK            0xfffe
 #define TMEMORY_SWITCH_LASTBIT            0x1
+
 // LastBIT for enable or disable
 #define TMEMORY_SWITCH_FLAG_SHELL      0x1 // for shell debug
 #define TMEMORY_SWITCH_FLAG_LOWBETTERY 0x2
 #define TMEMORY_SWITCH_FLAG_POWER      0x4
 #define TMEMORY_SWITCH_FLAG_PANIC      0x8
 #define TMEMORY_SWITCH_FLAG_UNREG      0x10
-#define TMEMORY_SWITCH_FLAG_OSENSE     0x20
-#define TMEMORY_SWITCH_FLAG_RUS        0x40
+#define TMEMORY_SWITCH_FLAG_MEMORY     0x40
 #define TMEMORY_SWITCH_FLAG_MULTIUSER  0x80
 #define TMEMORY_SWITCH_FLAG_FORCE      0x100
 
-#define TMEMORY_SWITCH_FLAG_OSENSE_SET  (TMEMORY_SWITCH_FLAG_OSENSE|TMEMORY_SWITCH_LASTBIT)
-#define TMEMORY_SWITCH_FLAG_RUS_SET    (TMEMORY_SWITCH_FLAG_RUS|TMEMORY_SWITCH_LASTBIT)
+#define TMEMORY_SWITCH_FLAG_MEMORY_SET    (TMEMORY_SWITCH_FLAG_MEMORY|TMEMORY_SWITCH_LASTBIT)
 
 #define SWITCH_FROZEN_TIME (HZ*60*30)
 
-#define TMEMORY_OSENSE_THRESHOLD 512
 #define TMEMORY_PAGE_TO_MBYTES(x) ((x) >> (20 - PAGE_SHIFT))
+
+#ifdef CONFIG_TMEMORY_AUTO_MEMORY
+#define TMEMORY_LOW_MEM_MB 400 /* Enable cache if free RAM > 400MB */
+#define TMEMORY_HIGH_MEM_MB 200 /* Disable cache if free RAM < 200MB */
+#endif
 
 enum {
 	TMEMORY_LOG_LEVEL_ERROR,
@@ -316,6 +321,9 @@ struct tmemory_device {
 	bool no_mem;
 
 	bool emergency_flag;
+#ifdef CONFIG_TMEMORY_AUTO_MEMORY
+	bool auto_mem_enabled;
+#endif
 #ifdef CONFIG_TMEMORY_MIGRATION
 	struct address_space mapping;
 	struct rw_semaphore migrate_lock;
@@ -616,6 +624,6 @@ void tmemory_update_latency_stat(int op, unsigned long latency);
 void tmemory_get_latency_stat(unsigned long *request, int op);
 void tmemory_get_error_stat(unsigned long *err);
 void tmemory_init_capacity(struct tmemory_device *tm);
-void tmemory_purposememory(int value);
-bool tmemory_availablemem_check(struct tmemory_device *tm);
+bool tmemory_has_enough_memory(struct tmemory_device *tm);
+bool tmemory_is_memory_low(struct tmemory_device *tm);
 #endif

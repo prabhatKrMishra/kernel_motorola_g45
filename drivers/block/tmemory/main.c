@@ -402,7 +402,7 @@ ssize_t tmemory_load_device(struct kobject *kobj, struct kobj_attribute *attr,
 	tm->state = TM_STATE_STOPPED;
 	tm->die = false;
 	tm->need_block = false;
-	tm->switch_flag = TMEMORY_SWITCH_FLAG_RUS;
+	tm->switch_flag = TMEMORY_SWITCH_FLAG_MEMORY;
 	tm->panic_no_close = false;
 
 	tm->switch_jiffies = 0;

@@ -1138,8 +1138,7 @@ static bool tmemory_switch_syncflag(struct tmemory_device *tm, int value)
 		case TMEMORY_SWITCH_FLAG_SHELL:
 			flag = true;
 			break;
-		case TMEMORY_SWITCH_FLAG_RUS:
-		case TMEMORY_SWITCH_FLAG_OSENSE:
+		case TMEMORY_SWITCH_FLAG_MEMORY:
 			flag = false;
 			break;
 		default:
@@ -1155,6 +1154,7 @@ void check_lazy_switch(struct tmemory_device *tm)
 {
 	int lazy_switch = 0;
 	unsigned long flags1,flags2;
+
 	tmemory_debug(tm, "check_lazy_switch:%d, jiffies:%lu", tm->lazy_switch, jiffies - tm->switch_jiffies);
 
 	if (!tm->openedflag)
@@ -1163,7 +1163,6 @@ void check_lazy_switch(struct tmemory_device *tm)
 	// trylock
 	if (!spin_trylock_irqsave(&tm->switch_set, flags1))
 		return;
-
 	if (!spin_trylock_irqsave(&tm->state_lock, flags2)) {
 		spin_unlock_irqrestore(&tm->switch_set, flags1);
 		return;
@@ -1174,20 +1173,34 @@ void check_lazy_switch(struct tmemory_device *tm)
 		TMEMORY_BUG_ON(1, tm, "");
 	}
 
-	if (tm->state != TM_STATE_STOPPED)
-		goto exit;
-
-	if ((tm->switch_flag & TMEMORY_SWITCH_FLAG_OSENSE) != 0) {
-		// auto switch when available memory
-		if (tmemory_availablemem_check(tm)) {
+#ifdef CONFIG_TMEMORY_AUTO_MEMORY
+	/* Check if we need to DISABLE the cache due to low memory */
+	if (tm->auto_mem_enabled && tm->state == TM_STATE_STARTED) {
+		if (tmemory_is_memory_low(tm)) {
 			spin_unlock_irqrestore(&tm->state_lock, flags2);
 			spin_unlock_irqrestore(&tm->switch_set, flags1);
-			// 1 for enable the osense case
-			tmemory_notice(tm, "tmemory_availablemem_check ok!");
-			tmemory_switch_set(tm, TMEMORY_SWITCH_FLAG_OSENSE_SET, false);
+			tmemory_notice(tm, "Native memory check: RAM low, disabling tmemory");
+			tmemory_switch_set(tm, TMEMORY_SWITCH_FLAG_MEMORY, false);
 			return;
 		}
 	}
+#endif
+
+	if (tm->state != TM_STATE_STOPPED)
+		goto exit;
+
+#ifdef CONFIG_TMEMORY_AUTO_MEMORY
+	/* Check if we need to ENABLE the cache because memory is available again */
+	if (tm->auto_mem_enabled) {
+		if (tmemory_has_enough_memory(tm)) {
+			spin_unlock_irqrestore(&tm->state_lock, flags2);
+			spin_unlock_irqrestore(&tm->switch_set, flags1);
+			tmemory_notice(tm, "Native memory check ok, enabling tmemory");
+			tmemory_switch_set(tm, TMEMORY_SWITCH_FLAG_MEMORY_SET, false);
+			return;
+		}
+	}
+#endif
 
 	if (tm->lazy_switch) {
 		if (jiffies >= tm->switch_jiffies) {
@@ -1252,7 +1265,7 @@ void tmemory_switch_set(struct tmemory_device *tm, int value, bool die)
 			if (set_disable && die)
 				tm->die = true;
 			break;
-		case TMEMORY_SWITCH_FLAG_RUS:
+		case TMEMORY_SWITCH_FLAG_MEMORY:
 			if (!set_disable)
 				tm->openedflag = true;
 			break;
@@ -1261,7 +1274,6 @@ void tmemory_switch_set(struct tmemory_device *tm, int value, bool die)
 		case TMEMORY_SWITCH_FLAG_POWER:
 		case TMEMORY_SWITCH_FLAG_PANIC:
 		case TMEMORY_SWITCH_FLAG_UNREG:
-		case TMEMORY_SWITCH_FLAG_OSENSE:
 		case TMEMORY_SWITCH_FLAG_SHELL:
 			break;
 		default:

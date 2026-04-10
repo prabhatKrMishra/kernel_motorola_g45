@@ -3,8 +3,6 @@
 DEFINE_PER_CPU(struct tmemory_stat, tmemory_stats) = {{0}};
 EXPORT_PER_CPU_SYMBOL(tmemory_stats);
 
-static int g_purpose_mem;
-
 void tmemory_printk(struct tmemory_device *tm, int log_level, const char * func, const char *fmt, ...)
 {
 	struct va_format vaf;
@@ -351,25 +349,17 @@ void tmemory_init_capacity(struct tmemory_device *tm)
 	tmemory_info(tm, "tmemory: capacity %d (%d MB)\n", capacity, capacity / 1024 * 4);
 }
 
-void tmemory_purposememory(int value)
-{
-	g_purpose_mem = value;
+#ifdef CONFIG_TMEMORY_AUTO_MEMORY
+bool tmemory_has_enough_memory(struct tmemory_device *tm) {
+	unsigned long available_mb = si_mem_available() >> (20 - PAGE_SHIFT);
+	tmemory_debug(tm, "AutoMem Check: Available=%lu MB, Threshold=%d MB (Enough)", available_mb, TMEMORY_LOW_MEM_MB);
+	return available_mb > TMEMORY_LOW_MEM_MB;
 }
 
-bool tmemory_availablemem_check(struct tmemory_device *tm)
-{
-	unsigned long threshold = TMEMORY_PAGE_TO_MBYTES(atomic_read(&tm->tmemory_capacity)) << 2;
-	unsigned long available = TMEMORY_PAGE_TO_MBYTES(si_mem_available());
-
-	if (threshold < TMEMORY_OSENSE_THRESHOLD)
-		threshold = TMEMORY_OSENSE_THRESHOLD;
-
-	tmemory_info(tm, "available:%lu threshold:%ld purposemem:%d", available,
-				threshold, g_purpose_mem);
-
-	if (available > (threshold + g_purpose_mem))
-		return true;
-
-	return false;
+bool tmemory_is_memory_low(struct tmemory_device *tm) {
+	unsigned long available_mb = si_mem_available() >> (20 - PAGE_SHIFT);
+	tmemory_debug(tm, "AutoMem Check: Available=%lu MB, Threshold=%d MB (LOW)", available_mb, TMEMORY_HIGH_MEM_MB);
+	return available_mb < TMEMORY_HIGH_MEM_MB;
 }
+#endif
 

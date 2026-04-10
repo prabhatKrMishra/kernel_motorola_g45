@@ -58,59 +58,6 @@ static unsigned char *__struct_ptr(struct tmemory_device *tm, int struct_type)
 	return NULL;
 }
 
-static ssize_t tmemory_set_memory(struct tmemory_device *tm, const char *buf, size_t count)
-{
-	char memory_info[MEMORY_INFO_LEN] = {0};
-	char *ptr = memory_info;
-	char *next;
-	const char st = '|';
-	int level = 0;
-	int max_level = 0;
-	int value = 0;
-	int clen;
-	const char *path;
-
-	if (count >= sizeof(memory_info))
-		return -EINVAL;
-
-	clen = buf[count - 1]  == '\n' ? count - 1 : count;
-	path = strncpy(memory_info, buf, clen);
-	if (!path) {
-		tmemory_err(tm, "check your format!");
-		return -EINVAL;
-	}
-
-	/* format:"level max_level value" */
-	next = strchr(ptr, st);
-	if (!next)
-		return -EINVAL;
-	*next++ = '\0';
-	if (kstrtoint(ptr, 10, &level))
-		return -EINVAL;
-	printk("memory_stat level:%d", level);
-	ptr = next;
-
-	next = strchr(ptr, st);
-	if (!next)
-		return -EINVAL;
-	*next++ = '\0';
-	if (kstrtoint(ptr, 10, &max_level))
-		return -EINVAL;
-	printk("memory_stat max_level:%d", max_level);
-	ptr = next;
-
-	if (kstrtoint(ptr, 10, &value))
-		return -EINVAL;
-	printk("memory_stat value:%d", value);
-
-	if (level == max_level) {
-		tmemory_purposememory(value);
-		tmemory_switch_set(tm, TMEMORY_SWITCH_FLAG_OSENSE, false);
-	}
-
-	return count;
-}
-
 static ssize_t tmemory_device_attr_store(struct tmemory_attr *a,
 			struct tmemory_device *tm,
 			const char *buf, size_t count)
@@ -127,8 +74,18 @@ static ssize_t tmemory_device_attr_store(struct tmemory_attr *a,
 	if (!ptr)
 		return -EINVAL;
 
-	if (!strcmp(a->attr.name, "memory_stat"))
-		return tmemory_set_memory(tm, buf, count);
+	if (!strcmp(a->attr.name, "memory_stat")) {
+#ifdef CONFIG_TMEMORY_AUTO_MEMORY
+		if (kstrtoul(skip_spaces(buf), 0, &value))
+			return -EINVAL;
+
+		tm->auto_mem_enabled = (value > 0);
+		tmemory_info(tm, "Auto memory management set to %d", tm->auto_mem_enabled);
+#else
+		tmemory_warn(tm, "Auto memory management not compiled in");
+#endif
+		return count;
+	}
 
 	ui = (unsigned int *)(ptr + a->offset);
 
