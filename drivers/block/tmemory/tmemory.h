@@ -3,7 +3,6 @@
 
 // for debug
 #define TMEMORY_DEV_DEBUG
-//#define TMEMORY_XCOPY_SUPPORT
 
 #include <linux/version.h>
 
@@ -46,10 +45,6 @@
 #endif
 #include <linux/semaphore.h>
 #include <linux/delay.h>
-
-#ifdef TMEMORY_XCOPY_SUPPORT
-#include <linux/blk_types.h>
-#endif
 
 #define SECTOR_SHIFT			9
 
@@ -161,8 +156,6 @@ enum {
 	TMEMORY_PRE_FLUSH_OP,		/* preflush */
 	TMEMORY_POST_FLUSH_OP,		/* postflush == FUA */
 	TMEMORY_REGISTER_PAGE_OP,	/* latency of register_page waiting for flush */
-	TMEMORY_DEVICE_COPY_OP,		/* xcopy */
-	TMEMORY_BARRIER_OP,		/* fbarrier */
 	TMEMORY_SUBMIT_BIO_WAIT_OP,	/* wait inflight write io before submit new bio */
 	TMEMORY_TRANS_WAIT_OP,		/* wait io in transaction to finish */
 	TMEMORY_BLOCK_WAIT_OP,		/* wait sync block when switch off */
@@ -265,10 +258,6 @@ struct tmemory_device {
 	atomic_t inflight_discard_bio;		/* inflight discard bio */
 	atomic_t inflight_discard_page;		/* inflight discard page */
 
-#ifdef TMEMORY_XCOPY_SUPPORT
-	atomic_t inflight_xcopy_read;		/* inflight xcopy read bio */
-#endif
-
 	/* slab statistic */
 	atomic_t trans_slab;
 	atomic_t discard_slab;
@@ -320,8 +309,6 @@ struct tmemory_device {
 
 	atomic_t flushmerge_waiters;
 	atomic_t flushmerge_no;
-
-	atomic_t w_count_fg;
 
 	/*for async commit */
 	wait_queue_head_t commit_trans_wait;

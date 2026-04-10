@@ -377,7 +377,6 @@ ssize_t tmemory_load_device(struct kobject *kobj, struct kobj_attribute *attr,
 	atomic_set(&tm->flushmerge_waiters, 0);
 	atomic_set(&tm->flushmerge_no, 0);
 
-	atomic_set(&tm->w_count_fg, 0);
 	atomic_set(&tm->max_block_time, TMEMORY_DEF_MAX_BLOCK_TIME);
 
 	init_waitqueue_head(&tm->commit_trans_wait);

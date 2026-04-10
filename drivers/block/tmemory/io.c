@@ -133,13 +133,10 @@ void tmemory_submit_bio(struct bio *bio, int op, unsigned int op_flags, struct t
 	}
 
 	bio_set_op_attrs(bio, op, bio->bi_opf);
-	if (op == REQ_OP_WRITE && !atomic_read(&tm->w_count_fg) &&
-#if 1
-		(current->flags & PF_KTHREAD))
-#else //OPLUS_FEATURE_SCHED_ASSIST
-		(current->flags & PF_KTHREAD)) && (op_flags & REQ_FG))
-#endif
+
+	if (op == REQ_OP_WRITE && (current->flags & PF_KTHREAD))
 		tmemory_wait(tm);
+
 	tmemory_debug(tm, "tmemory_submit_bio, op:%d, opf:%d, idx:%llu, segs:%u",
 		op, bio->bi_opf, bio->bi_iter.bi_sector >> SECTOR_PER_PAGE_SHIFT,
 		bio_segments(bio));
@@ -927,11 +924,6 @@ int do_write_bio(struct tmemory_device *tm, struct bio *bio,
 
 	down_read(&tm->commit_rwsem);
 
-#if 0 //OPLUS_FEATURE_SCHED_ASSIST
-	if (bio->bi_opf & REQ_FG)
-		atomic_inc(&tm->w_count_fg);
-#endif
-
 	if (time_to_inject(tm, FAULT_PANIC_COMMIT_RWSEM)) {
 		tmemory_show_injection_info(tm, FAULT_PANIC_COMMIT_RWSEM);
 		TMEMORY_BUG_ON(1, tm, "");
@@ -1006,10 +998,6 @@ insert_page:
 			}
 
 			if (IS_ERR(dst)) {
-#if 0 //OPLUS_FEATURE_SCHED_ASSIST
-				if (bio->bi_opf & REQ_FG)//move to out_unlock?
-					atomic_dec(&tm->w_count_fg);
-#endif
 				migrate_unlock(tm);
 				ret = PTR_ERR(dst);
 				dst = NULL;
@@ -1075,207 +1063,11 @@ insert_page:
 		ofs++;
 	}
 
-#if 0  //OPLUS_FEATURE_SCHED_ASSIST
-	if (bio->bi_opf & REQ_FG)
-		atomic_dec(&tm->w_count_fg);
-#endif
 out_unlock:
 	up_read(&tm->commit_rwsem);
 	*need_endio = true;
 	return ret;
 }
-
-#ifdef TMEMORY_XCOPY_SUPPORT
-struct tmemory_xcopy_read_context {
-	struct work_struct work;
-	struct tmemory_device *tm;
-	struct page *page;
-	pgoff_t pblk;
-};
-
-static void tmemory_xcopy_read_work(struct work_struct *work)
-{
-	struct tmemory_xcopy_read_context *ixrc =
-		container_of(work, struct tmemory_xcopy_read_context, work);
-	struct tmemory_device *tm = ixrc->tm;
-	struct bio *bio;
-
-	/* read from disk */
-	bio = bio_alloc(GFP_NOIO, 1);
-	atomic_inc(&tm->bio_cnt);
-	bio->bi_opf = REQ_SYNC;
-	bio_set_dev(bio, tm->rbd);
-	bio->bi_iter.bi_sector =
-			ixrc->pblk << SECTOR_PER_PAGE_SHIFT;
-	bio->bi_end_io = read_endio;
-	bio->bi_private = tm;
-
-	bio->bi_crypt_context = NULL;
-#ifdef CONFIG_DM_DEFAULT_KEY
-	bio->bi_skip_dm_default_key = true;
-#endif
-
-	if (bio_add_page(bio, ixrc->page, PAGE_SIZE, 0) < PAGE_SIZE)
-		TMEMORY_BUG_ON(1, tm, "");
-
-	atomic_inc(&tm->inflight_xcopy_read);
-
-	tmemory_submit_bio(bio, REQ_OP_READ, bio->bi_opf, tm);
-}
-
-int do_xcopy_bio(struct tmemory_device *tm, struct bio *bio,
-			pgoff_t blkaddr, unsigned int blkofs,
-			bool *need_endio)
-{
-	struct blk_copy_payload *payload = bio->bi_private;
-	struct tmemory_transaction *trans;
-	struct radix_tree_root *space;
-	int size = 0;
-	int i;
-
-	TMEMORY_BUG_ON(bio_is_encrypted(bio), tm, "");
-
-	while (size < BLK_MAX_COPY_RANGE) {
-		if (!payload->src_addr[size])
-			break;
-		size++;
-	}
-
-	TMEMORY_BUG_ON(!size, tm, "");
-	TMEMORY_BUG_ON(size > BLK_MAX_COPY_RANGE, tm, "");
-
-	down_read(&tm->commit_rwsem);
-
-	if (time_to_inject(tm, FAULT_PANIC_COMMIT_RWSEM)) {
-		tmemory_show_injection_info(tm, FAULT_PANIC_COMMIT_RWSEM);
-		TMEMORY_BUG_ON(1, tm, "");
-	}
-
-	trans = latest_transaction(tm);
-
-	for (i = 0; i < size; i++) {
-		pgoff_t lblk = payload->src_addr[i];
-		pgoff_t pblk = payload->dst_addr[i];
-		struct page *orig_page = payload->pages[i];
-		struct page *src, *dst;
-		void **slot;
-		int retry = TMEMORY_IO_RETRY_COUNT;
-		unsigned long update_flags;
-
-		migrate_lock(tm);
-repeat:
-		rcu_read_lock();
-
-		space = &trans->space;
-
-		slot = radix_tree_lookup_slot(space, pblk);
-		TMEMORY_BUG_ON(slot, tm, "");
-
-		rcu_read_unlock();
-
-		//should never fail
-		dst = register_page(tm, orig_page->index, pblk, slot, trans, &update_flags);
-		if (PTR_ERR(dst) == -ENOMEM) {
-			unsigned long start;
-
-			up_read(&tm->commit_rwsem);
-
-			mutex_lock(&tm->nomem_lock);
-			tm->no_mem = true;
-			smp_mb();
-			wake_up_interruptible_all(&tm->commit_trans_wait);
-			start = jiffies;
-			wait_event_interruptible(tm->nomem_wait, !tm->no_mem);
-			tmemory_update_latency_stat(TMEMORY_WAIT_MEM_OP, jiffies - start);
-			mutex_unlock(&tm->nomem_lock);
-
-			down_read(&tm->commit_rwsem);
-			if (retry--) {
-				trans = latest_transaction(tm);
-				goto repeat;
-			}
-			/* should fallback to error handling */
-			tmemory_warn(tm, "do_xcopy_bio() no memory");
-		} else if (PTR_ERR(dst) == -EAGAIN) {
-			tmemory_err(tm, "do_xcopy_bio() register_page fail err:%d",
-				PTR_ERR(dst));
-			trans = latest_transaction(tm);
-			goto repeat;
-		} else {
-			/*
-			 * get latest transaction again since register_page()
-			 * may unlock and re-lock commit_rwsem, then trans may
-			 * get freed by flush thread
-			 */
-			trans = latest_transaction(tm);
-		}
-
-		get_page(dst);
-		atomic_inc(&tm->page_cnt);
-
-		rcu_read_lock();
-
-		space = &tm->global_space;
-
-		src = radix_tree_lookup(space, blkaddr);
-		if (src) {
-			unsigned long src_flags, dst_flags;
-
-			tmemory_copy_page(dst, src, 0, PAGE_SIZE);
-
-#ifdef CONFIG_TMEMORY_CRYPTO
-			spin_lock_irqsave(&tmemory_page_crypt_lock(dst), dst_flags);
-			spin_lock_irqsave(&tmemory_page_crypt_lock(src), src_flags);
-			if (time_to_inject(tm, FAULT_PANIC_PAGECRYPT_LOCK)) {
-				tmemory_show_injection_info(tm, FAULT_PANIC_PAGECRYPT_LOCK);
-				TMEMORY_BUG_ON(1, tm, "");
-			}
-			save_page_key_to_page(dst, src);
-			tmemory_page_crypt_lblk(dst) = tmemory_page_crypt_lblk(src);
-			spin_unlock_irqrestore(&tmemory_page_crypt_lock(src), src_flags);
-			spin_unlock_irqrestore(&tmemory_page_crypt_lock(dst), dst_flags);
-#endif
-			spin_unlock_irqrestore(&tm->update_lock, update_flags);
-
-			rcu_read_unlock();
-		} else {
-			struct tmemory_xcopy_read_context ixrc = { 0 };
-
-			rcu_read_unlock();
-			spin_unlock_irqrestore(&tm->update_lock, update_flags);
-
-			ixrc.tm = tm;
-			ixrc.page = dst;
-			ixrc.pblk = lblk;
-
-			lock_page(dst);
-
-			INIT_WORK(&ixrc.work, tmemory_xcopy_read_work);
-			queue_work(tm->crypto_wq, &ixrc.work);
-
-			lock_page(dst);
-			atomic_dec(&tm->inflight_xcopy_read);
-			unlock_page(dst);
-		}
-
-		put_page(dst);
-		atomic_dec(&tm->page_cnt);
-
-		migrate_unlock(tm);
-	}
-
-	up_read(&tm->commit_rwsem);
-	*need_endio = true;
-	return 0;
-}
-#else
-int do_xcopy_bio(struct tmemory_device *tm, struct bio *bio,
-			pgoff_t blkaddr, unsigned int blkofs,
-			bool *need_endio)
-{
-	return 0;
-}
-#endif
 
 void tmemory_enable_switch(struct tmemory_device *tm)
 {
@@ -1590,14 +1382,6 @@ static inline int bio_op_to_tmemory_op(unsigned int op, unsigned int opf)
 		return TMEMORY_WRITE_OP;
 	if (op == REQ_OP_READ)
 		return TMEMORY_READ_OP;
-#ifdef TMEMORY_XCOPY_SUPPORT
-	if (op == REQ_OP_DEVICE_COPY)
-		return TMEMORY_DEVICE_COPY_OP;
-#endif
-#ifdef CONFIG_OPLUS_FEATURE_FBARRIER
-	if (op == REQ_OP_BARRIER)
-		return TMEMORY_BARRIER_OP;
-#endif
 	return -1;
 }
 
@@ -1717,7 +1501,6 @@ blk_qc_t tmemory_make_request(struct request_queue *queue, struct bio *bio)
 	int iop;
 	int err;
 	unsigned long start_jiffies = jiffies;
-	bool is_barrier = false;
 	int state;
 	unsigned long flags;
 
@@ -1775,12 +1558,8 @@ blk_qc_t tmemory_make_request(struct request_queue *queue, struct bio *bio)
 		goto out;
 	}
 
-#ifdef CONFIG_OPLUS_FEATURE_FBARRIER
-	is_barrier = bio_op(bio) == REQ_OP_BARRIER;
-#endif
-
-	if (op_is_flush(bio->bi_opf) || is_barrier) {
-		if ((bio->bi_opf & REQ_PREFLUSH) || is_barrier) {
+	if (op_is_flush(bio->bi_opf)) {
+		if ((bio->bi_opf & REQ_PREFLUSH)) {
 			err = tmemory_stop_transaction(tm, true, false);
 			tmemory_debug(tm, "make_request [preflush], err:%d", err);
 			if (err) {
@@ -1812,14 +1591,6 @@ blk_qc_t tmemory_make_request(struct request_queue *queue, struct bio *bio)
 		err = do_read_bio(tm, bio, blkaddr, blkofs, &need_endio);
 		if (err)
 			dec_tmemory_remaining(tm);
-#ifdef TMEMORY_XCOPY_SUPPORT
-	} else if (op == REQ_OP_DEVICE_COPY) {
-		err = do_xcopy_bio(tm, bio, blkaddr, blkofs, &need_endio);
-		dec_tmemory_remaining(tm);
-#endif
-#ifdef CONFIG_OPLUS_FEATURE_FBARRIER
-	} else if (op == REQ_OP_BARRIER) {
-#endif
 	} else {
 		tmemory_err(tm, "tmemory bypass bio op(%u)", op);
 		tmemory_error(TMEMORY_ERR_NOTSUPP);
