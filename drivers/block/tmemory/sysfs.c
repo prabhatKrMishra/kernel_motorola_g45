@@ -435,7 +435,7 @@ static struct tmemory_attr tmemory_attr_##_name = {			\
 }
 
 #define TMEMORY_RW_ATTR(struct_type, struct_name, name, elname)	\
-	TMEMORY_ATTR_OFFSET(struct_type, name, 0664,		\
+	TMEMORY_ATTR_OFFSET(struct_type, name, 0666,		\
 		tmemory_device_attr_show, tmemory_device_attr_store,	\
 		offsetof(struct struct_name, elname))
 
@@ -590,18 +590,9 @@ static ssize_t tmemory_attr_store(struct kobject *kobj, struct attribute *attr,
 
 static void tmemory_attr_release(struct kobject *kobj)
 {
-	struct tmemory_device *tm = container_of(kobj, struct tmemory_device,
-								s_kobj);
+	struct tmemory_device *tm = container_of(kobj, struct tmemory_device, s_kobj);
 	complete(&tm->s_kobj_unregister);
 }
-
-/* FIXME: 4.14 kernel doesn't support change uid/gid of sysfs entry */
-#if LINUX_KERNEL_515 || LINUX_KERNEL_510 || LINUX_KERNEL_419 || LINUX_KERNEL_504
-static void tmemory_get_ownership(struct kobject *kobj, kuid_t *uid, kgid_t *gid)
-{
-	*gid = KGIDT_INIT(TMEMORY_ANDROID_SYSTEM);
-}
-#endif
 
 static const struct sysfs_ops tmemory_attr_ops = {
 	.show	= tmemory_attr_show,
@@ -610,13 +601,9 @@ static const struct sysfs_ops tmemory_attr_ops = {
 
 static struct kobj_type tmemory_device_ktype = {
 #if LINUX_KERNEL_515 || LINUX_KERNEL_510
-	.default_groups = tmemory_device_groups,
-	.get_ownership	= tmemory_get_ownership,
-#elif LINUX_KERNEL_414
+	.default_groups	= tmemory_device_groups,
+#else
 	.default_attrs	= tmemory_device_attrs,
-#elif LINUX_KERNEL_419 || LINUX_KERNEL_504
-	.default_attrs	= tmemory_device_attrs,
-	.get_ownership	= tmemory_get_ownership,
 #endif
 	.sysfs_ops	= &tmemory_attr_ops,
 	.release	= tmemory_attr_release,
