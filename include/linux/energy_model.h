@@ -58,22 +58,6 @@ struct em_perf_domain {
 #define em_scale_power(p) (p)
 #endif
 
-/*
- * Increase resolution of energy estimation calculations for 64-bit
- * architectures. The extra resolution improves decision made by EAS for the
- * task placement when two Performance Domains might provide similar energy
- * estimation values (w/o better resolution the values could be equal).
- *
- * We increase resolution only if we have enough bits to allow this increased
- * resolution (i.e. 64-bit). The costs for increasing resolution when 32-bit
- * are pretty high and the returns do not justify the increased costs.
- */
-#ifdef CONFIG_64BIT
-#define em_scale_power(p) ((p) * 1000)
-#else
-#define em_scale_power(p) (p)
-#endif
-
 struct em_data_callback {
 	/**
 	 * active_power() - Provide power at the next capacity state of a CPU
@@ -99,23 +83,37 @@ struct em_perf_domain *em_cpu_get(int cpu);
 int em_register_perf_domain(cpumask_t *span, unsigned int nr_states,
 						struct em_data_callback *cb);
 
+#ifdef CONFIG_CPU_FREQ_GOV_SCHEDUTIL
+extern unsigned long schedutil_get_eas_bias(int cpu, unsigned long cap);
+#else
+static inline unsigned long schedutil_get_eas_bias(int cpu,
+						   unsigned long cap)
+{
+	return 0;
+}
+#endif
+
+#ifdef CONFIG_CPU_FREQ_GOV_SCHEDUTIL
+extern unsigned int util_scale;
+#else
+#define util_scale SCHED_CAPACITY_SCALE
+#endif
+
 /**
  * em_pd_energy() - Estimates the energy consumed by the CPUs of a perf. domain
  * @pd		: performance domain for which energy has to be estimated
  * @max_util	: highest utilization among CPUs of the domain
  * @sum_util	: sum of the utilization of all CPUs in the domain
  *
- * To ensure Energy Aware Scheduling (EAS) places tasks based on the exact
- * frequency the governor will actually select, this function applies the
- * same DVFS headroom margin to @max_util as schedutil's non-linear table
- * lookup.
+ * Estimate the energy consumed by a performance domain for the given
+ * utilization. The utilization is scaled by the schedutil margin and
+ * mapped to the lowest OPP whose capacity satisfies the demand.
  *
- * It then iterates through the performance domain's capacity states to find
- * the lowest OPP that provides sufficient capacity to handle the scaled
- * utilization demand (where OPP_Capacity = frequency * scale_cpu / max_freq).
+ * Capacity is derived from a linear frequency mapping. A per-CPU bias,
+ * provided by schedutil, is added to account for deviations from the
+ * linear model. The bias is precomputed and retrieved via an O(1) lookup.
  *
- * Return: the sum of the energy consumed by the CPUs of the domain assuming
- * a capacity state satisfying the scaled max utilization of the domain.
+ * Return: energy estimate for the domain.
  */
 static inline unsigned long em_pd_energy(struct em_perf_domain *pd,
 				unsigned long max_util, unsigned long sum_util)
@@ -125,7 +123,6 @@ static inline unsigned long em_pd_energy(struct em_perf_domain *pd,
 	int i, cpu;
 	unsigned long max_freq;
 	unsigned long scaled_util;
-	extern unsigned int util_scale;
 
 	if (!sum_util)
 		return 0;
@@ -135,22 +132,19 @@ static inline unsigned long em_pd_energy(struct em_perf_domain *pd,
 
 	max_freq = pd->table[pd->nr_cap_states - 1].frequency;
 	scaled_util = (max_util * util_scale) >> SCHED_CAPACITY_SHIFT;
+
 	if (scaled_util > scale_cpu)
 		scaled_util = scale_cpu;
 
-	/*
-	 * Iterate through the EM table to find the capacity state.
-	 * We find the lowest OPP where (OPP_Capacity >= scaled_util).
-	 *
-	 * OPP_Capacity = (cs->frequency * scale_cpu) / max_freq
-	 */
-	cs = &pd->table[pd->nr_cap_states - 1]; /* Default to max OPP */
+	cs = &pd->table[pd->nr_cap_states - 1];
+
 	for (i = 0; i < pd->nr_cap_states; i++) {
 		unsigned long cs_cap;
 
 		cs = &pd->table[i];
-
-		cs_cap = (cs->frequency * scale_cpu) / max_freq;
+		cs_cap = mult_frac(cs->frequency, scale_cpu, max_freq);
+		cs_cap += schedutil_get_eas_bias(cpu, cs_cap);
+		cs_cap = min(cs_cap, scale_cpu);
 
 		if (cs_cap >= scaled_util)
 			break;

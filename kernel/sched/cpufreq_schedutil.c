@@ -32,6 +32,8 @@ struct sugov_policy {
 	struct cpufreq_policy	*policy;
 
 	unsigned int		*util_freq;
+	/* Capacity delta between curve and linear for EAS */
+	unsigned long		*eas_bias;
 	unsigned long		max_cap;
 
 	u64 last_ws;
@@ -203,6 +205,38 @@ static void update_util_scale(void)
 }
 
 /*
+ * Return schedutil capacity bias for a given CPU and capacity.
+ *
+ * The bias represents the delta between the nonlinear capacity mapping
+ * and the linear model used by EAS. Values are precomputed and stored
+ * in a lookup table for O(1) access on the fast path.
+ *
+ * @cpu: target CPU
+ * @cap: capacity value used as index into the bias table
+ *
+ * Return: bias value, or 0 if unavailable or out of range.
+ */
+unsigned long schedutil_get_eas_bias(int cpu, unsigned long cap)
+{
+	struct sugov_policy *sg_policy;
+	unsigned long bias = 0;
+
+	if (unlikely((unsigned int)cpu >= nr_cpu_ids))
+		return 0;
+
+	rcu_read_lock();
+	sg_policy = READ_ONCE(per_cpu(sugov_cpu, cpu).sg_policy);
+
+	if (sg_policy && sg_policy->eas_bias &&
+		cap < (sg_policy->max_cap + 1))
+		bias = sg_policy->eas_bias[cap];
+	rcu_read_unlock();
+
+	return bias;
+}
+EXPORT_SYMBOL_GPL(schedutil_get_eas_bias);
+
+/*
  * Map CPU frequency to capacity using a concave hybrid model.
  *
  * Rationale:
@@ -266,6 +300,20 @@ static unsigned long freq_to_power_cap(unsigned int freq,
 	);
 }
 
+/*
+ * Initialize the O(1) frequency lookup array and the EAS cost bias array.
+ *
+ * Iterates backward through the frequency table. For each valid OPP, it calculates
+ * capacity using the hybrid power curve (for big cores) or pure linear math
+ * (for LITTLE cores).
+ *
+ * Concurrently, it calculates the delta between the power-curve capacity and
+ * standard linear capacity. This delta is stored in the EAS bias array. By
+ * applying this bias during energy calculations, EAS perceives intermediate
+ * high-end OPPs as more "expensive" than they actually are, suppressing
+ * unnecessary task migrations to the big core when it is operating in its
+ * high-efficiency mid-range frequency range.
+ */
 static int init_nonlinear_table(struct sugov_policy *sg_policy)
 {
 	struct cpufreq_policy *policy = sg_policy->policy;
@@ -311,8 +359,14 @@ static int init_nonlinear_table(struct sugov_policy *sg_policy)
 			}
 		}
 
-		for (j = cap; j > next_cap; j--) {
+		for (j = cap; j >= (int)next_cap; j--) {
 			sg_policy->util_freq[j] = freq;
+
+			if (sg_policy->eas_bias) {
+				long delta = (long)cap - (long)mult_frac(freq, max_cap, policy->cpuinfo.max_freq);
+				if (delta > 0)
+					sg_policy->eas_bias[j] = delta;
+			}
 		}
 	}
 
@@ -321,8 +375,18 @@ static int init_nonlinear_table(struct sugov_policy *sg_policy)
 
 static void free_nonlinear_table(struct sugov_policy *sg_policy)
 {
-	kfree(sg_policy->util_freq);
+	if (sg_policy->util_freq)
+		kfree(sg_policy->util_freq);
+
 	sg_policy->util_freq = NULL;
+}
+
+static void free_eas_bias(struct sugov_policy *sg_policy)
+{
+	if (sg_policy->eas_bias)
+		kfree(sg_policy->eas_bias);
+
+	sg_policy->eas_bias = NULL;
 }
 
 static unsigned long freq_to_util(struct sugov_policy *sg_policy,
@@ -1346,6 +1410,7 @@ static int sugov_init(struct cpufreq_policy *policy)
 	struct sugov_policy *sg_policy;
 	struct sugov_tunables *tunables;
 	unsigned long util;
+	unsigned long max_cap;
 	int ret = 0;
 
 	/* State should be equivalent to EXIT */
@@ -1411,6 +1476,13 @@ static int sugov_init(struct cpufreq_policy *policy)
 	stale_ns = sched_ravg_window + (sched_ravg_window >> 3);
 
 	update_util_scale();
+
+	/* Only allocate this memory if currently initializing a Big Core. */
+	max_cap = arch_scale_cpu_capacity(policy->cpu);
+	if (max_cap >= (SCHED_CAPACITY_SCALE * 95 / 100))
+		sg_policy->eas_bias = kcalloc(max_cap + 1,
+			sizeof(unsigned long), GFP_KERNEL);
+
 	ret = init_nonlinear_table(sg_policy);
 	if (ret) {
 		pr_err("Failed to init nonlinear freq table\n");
@@ -1467,6 +1539,7 @@ static void sugov_exit(struct cpufreq_policy *policy)
 
 	mutex_unlock(&global_tunables_lock);
 
+	free_eas_bias(sg_policy);
 	free_nonlinear_table(sg_policy);
 
 	sugov_kthread_stop(sg_policy);
@@ -1517,6 +1590,11 @@ static void sugov_stop(struct cpufreq_policy *policy)
 
 	for_each_cpu(cpu, policy->cpus)
 		cpufreq_remove_update_util_hook(cpu);
+
+	synchronize_rcu();
+
+	for_each_cpu(cpu, policy->cpus)
+		WRITE_ONCE(per_cpu(sugov_cpu, cpu).sg_policy, NULL);
 
 	synchronize_rcu();
 
