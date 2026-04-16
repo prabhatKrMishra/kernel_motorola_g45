@@ -14,6 +14,7 @@
 #include <trace/events/power.h>
 #include <linux/sched/sysctl.h>
 #include <trace/hooks/sched.h>
+#include <linux/math64.h>
 
 #define IOWAIT_BOOST_MIN	(SCHED_CAPACITY_SCALE / 8)
 
@@ -192,13 +193,77 @@ static bool sugov_update_next_freq(struct sugov_policy *sg_policy, u64 time,
 	return true;
 }
 
-#define DEFAULT_DVFS_MARGIN 5
+#define DEFAULT_DVFS_MARGIN 2
 static unsigned int sched_capacity_margin_dvfs = DEFAULT_DVFS_MARGIN;
 unsigned int util_scale;
 
 static void update_util_scale(void)
 {
 	util_scale = (SCHED_CAPACITY_SCALE * 100) / (100 - sched_capacity_margin_dvfs);
+}
+
+/*
+ * Map CPU frequency to capacity using a concave hybrid model.
+ *
+ * Rationale:
+ * Linear scaling (capacity ∝ frequency) overestimates real throughput at
+ * higher frequencies due to non-scaling factors such as memory latency
+ * and pipeline bottlenecks. To model diminishing returns, this function
+ * blends a linear component with a concave (square-root) component.
+ *
+ * Design goals:
+ *  - Preserve monotonicity (higher freq → higher capacity)
+ *  - Maintain numerical stability using fixed-point arithmetic
+ *  - Guarantee capacity never exceeds max_cap (avoids scheduler overflow)
+ *
+ * Fixed-point domains:
+ *  - ratio_q20 : Q20 representation of (freq / max_freq)
+ *  - lin       : Q10 linear approximation of ratio
+ *  - sqrt_cap  : Q10 approximation of sqrt(ratio)
+ *
+ * Blending strategy:
+ *  - Below 50% frequency: purely linear
+ *  - Above 50%: smoothly interpolate toward concave curve
+ *  - Square-root path is clamped to linear to prevent overshoot
+ */
+static unsigned long freq_to_power_cap(unsigned int freq,
+		unsigned long max_cap, unsigned int max_freq)
+{
+	u64 ratio_q20, lin, sqrt_cap;
+	u64 threshold_q20, w_q10, inv_w;
+	unsigned long max_ratio_q20;
+
+	if (freq == max_freq)
+		return max_cap;
+
+	if (max_cap < (SCHED_CAPACITY_SCALE * 95 / 100))
+		return mult_frac(freq, max_cap, max_freq);
+
+	max_ratio_q20 = (u64)SCHED_CAPACITY_SCALE << SCHED_CAPACITY_SHIFT;
+
+	threshold_q20 = max_ratio_q20 >> 1;
+
+	ratio_q20 = (u64)freq << (SCHED_CAPACITY_SHIFT * 2);
+	do_div(ratio_q20, max_freq);
+
+	lin = ratio_q20 >> SCHED_CAPACITY_SHIFT;
+
+	sqrt_cap = int_sqrt(ratio_q20);
+
+	if (sqrt_cap > SCHED_CAPACITY_SCALE)
+		sqrt_cap = SCHED_CAPACITY_SCALE;
+
+	if (ratio_q20 < threshold_q20)
+		return mult_frac(lin, max_cap, SCHED_CAPACITY_SCALE);
+
+	w_q10 = (ratio_q20 - threshold_q20) >> 9;
+	inv_w = SCHED_CAPACITY_SCALE - w_q10;
+
+	return mult_frac(
+		((lin * inv_w) + (sqrt_cap * w_q10)) >> SCHED_CAPACITY_SHIFT,
+		max_cap,
+		SCHED_CAPACITY_SCALE
+	);
 }
 
 static int init_nonlinear_table(struct sugov_policy *sg_policy)
@@ -233,7 +298,7 @@ static int init_nonlinear_table(struct sugov_policy *sg_policy)
 		if (freq == CPUFREQ_ENTRY_INVALID)
 			continue;
 
-		cap = mult_frac(freq, max_cap, policy->cpuinfo.max_freq);
+		cap = freq_to_power_cap(freq, max_cap, policy->cpuinfo.max_freq);
 		if (cap == 0)
 			continue;
 
@@ -241,7 +306,7 @@ static int init_nonlinear_table(struct sugov_policy *sg_policy)
 		for (j = i - 1; j >= 0; j--) {
 			unsigned int next_freq = policy->freq_table[j].frequency;
 			if (next_freq != CPUFREQ_ENTRY_INVALID) {
-				next_cap = mult_frac(next_freq, max_cap, policy->cpuinfo.max_freq);
+				next_cap = freq_to_power_cap(next_freq, max_cap, policy->cpuinfo.max_freq);
 				break;
 			}
 		}
