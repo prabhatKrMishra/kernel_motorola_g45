@@ -18,7 +18,7 @@ config HYBRIDSWAP_ZRAM
 choice
 	prompt "Default hybridswap-zram compressor"
 	depends on HYBRIDSWAP_ZRAM
-	default HYBRIDSWAP_ZRAM_DEF_COMP_LZO
+	default HYBRIDSWAP_ZRAM_DEF_COMP_LZORLE
 
 config HYBRIDSWAP_ZRAM_DEF_COMP_ZSTD
 	bool "zstd"
