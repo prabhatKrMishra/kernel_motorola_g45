@@ -49,16 +49,11 @@ echo 3    > /proc/sys/vm/dirty_background_ratio
 echo 1000 > /proc/sys/vm/dirty_writeback_centisecs
 echo 3000 > /proc/sys/vm/dirty_expire_centisecs
 
-# Swap behavior
-echo 30 > /proc/sys/vm/swappiness
+# Seeking is minimal
 echo 0  > /proc/sys/vm/page-cluster
 
-# Reclaim smoothness
-echo 25 > /proc/sys/vm/watermark_scale_factor
-echo 131072 > /proc/sys/vm/extra_free_kbytes
-
-# Fragmentation control
-echo 20 > /proc/sys/vm/compaction_proactiveness
+# Disables proactive compaction
+echo 0 > /proc/sys/vm/compaction_proactiveness
 
 # ===========================
 
