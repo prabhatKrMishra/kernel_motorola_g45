@@ -1759,7 +1759,7 @@ void blk_mq_flush_plug_list(struct blk_plug *plug, bool from_schedule)
 		struct blk_mq_ctx *this_ctx = head_rq->mq_ctx;
 		unsigned int depth = 1;
 
-		list_for_each_continue(pos, &list) {
+		for (pos = pos->next; pos != &list; pos = pos->next) {
 			rq = list_entry_rq(pos);
 			BUG_ON(!rq->q);
 			if (rq->mq_hctx != this_hctx || rq->mq_ctx != this_ctx)
