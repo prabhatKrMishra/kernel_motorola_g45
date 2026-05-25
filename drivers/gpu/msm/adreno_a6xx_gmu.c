@@ -892,20 +892,19 @@ static int a6xx_gmu_dcvs_nohfi(struct kgsl_device *device,
 	return ret;
 }
 
-static int a6xx_complete_rpmh_votes(struct adreno_device *adreno_dev,
-		unsigned int timeout)
+static int a6xx_complete_rpmh_votes(struct adreno_device *adreno_dev)
 {
 	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
 	int ret = 0;
 
 	ret |= timed_poll_check_rscc(device, A6XX_RSCC_TCS0_DRV0_STATUS,
-			BIT(0), timeout, BIT(0));
+			BIT(0), GPU_RESET_TIMEOUT, BIT(0));
 	ret |= timed_poll_check_rscc(device, A6XX_RSCC_TCS1_DRV0_STATUS,
-			BIT(0), timeout, BIT(0));
+			BIT(0), GPU_RESET_TIMEOUT, BIT(0));
 	ret |= timed_poll_check_rscc(device, A6XX_RSCC_TCS2_DRV0_STATUS,
-			BIT(0), timeout, BIT(0));
+			BIT(0), GPU_RESET_TIMEOUT, BIT(0));
 	ret |= timed_poll_check_rscc(device, A6XX_RSCC_TCS3_DRV0_STATUS,
-			BIT(0), timeout, BIT(0));
+			BIT(0), GPU_RESET_TIMEOUT, BIT(0));
 
 	return ret;
 }
@@ -1624,7 +1623,7 @@ static void a6xx_gmu_pwrctrl_suspend(struct adreno_device *adreno_dev)
 	/* Disconnect GPU from BUS is not needed if CX GDSC goes off later */
 
 	/* Check no outstanding RPMh voting */
-	a6xx_complete_rpmh_votes(adreno_dev, GPU_RESET_TIMEOUT);
+	a6xx_complete_rpmh_votes(adreno_dev);
 
 	/* Clear the WRITEDROPPED fields and set fence to allow mode */
 	gmu_core_regwrite(device, A6XX_GMU_AHB_FENCE_STATUS_CLR, 0x7);
@@ -2776,8 +2775,6 @@ int a6xx_halt_gbif(struct adreno_device *adreno_dev)
 	return ret;
 }
 
-#define RPMH_VOTE_TIMEOUT		2 /* ms */
-
 static int a6xx_gmu_power_off(struct adreno_device *adreno_dev)
 {
 	struct a6xx_gmu_device *gmu = to_a6xx_gmu(adreno_dev);
@@ -2789,10 +2786,6 @@ static int a6xx_gmu_power_off(struct adreno_device *adreno_dev)
 
 	/* Wait for the lowest idle level we requested */
 	ret = a6xx_gmu_wait_for_lowest_idle(adreno_dev);
-	if (ret)
-		goto error;
-
-	ret = a6xx_complete_rpmh_votes(adreno_dev, RPMH_VOTE_TIMEOUT);
 	if (ret)
 		goto error;
 
@@ -2942,8 +2935,7 @@ static int a6xx_boot(struct adreno_device *adreno_dev)
 	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
 	int ret;
 
-	if (WARN_ON(test_bit(GMU_PRIV_GPU_STARTED, &gmu->flags)))
-		return 0;
+	WARN_ON(test_bit(GMU_PRIV_GPU_STARTED, &gmu->flags));
 
 	trace_kgsl_pwr_request_state(device, KGSL_STATE_ACTIVE);
 
@@ -2976,12 +2968,8 @@ static int a6xx_first_boot(struct adreno_device *adreno_dev)
 	int ret;
 	unsigned long priv = 0;
 
-	if (test_bit(GMU_PRIV_FIRST_BOOT_DONE, &gmu->flags)) {
-		if (!test_bit(GMU_PRIV_GPU_STARTED, &gmu->flags))
-			return a6xx_boot(adreno_dev);
-
-		return 0;
-	}
+	if (test_bit(GMU_PRIV_FIRST_BOOT_DONE, &gmu->flags))
+		return a6xx_boot(adreno_dev);
 
 	place_marker("M - DRIVER ADRENO Init");
 
@@ -3078,17 +3066,9 @@ static int a6xx_power_off(struct adreno_device *adreno_dev)
 
 	WARN_ON(!test_bit(GMU_PRIV_GPU_STARTED, &gmu->flags));
 
-	adreno_suspend_context(device);
-
-	/*
-	 * adreno_suspend_context() unlocks the device mutex, which
-	 * could allow a concurrent thread to attempt SLUMBER sequence.
-	 * Hence, check the flags again before proceeding with SLUMBER.
-	 */
-	if (!test_bit(GMU_PRIV_GPU_STARTED, &gmu->flags))
-		return 0;
-
 	trace_kgsl_pwr_request_state(device, KGSL_STATE_SLUMBER);
+
+	adreno_suspend_context(device);
 
 	ret = a6xx_gmu_oob_set(device, oob_gpu);
 	if (ret) {
