@@ -32,10 +32,9 @@ enum {
 };
 
 /*
- * The RT and BE priority classes both support up to 8 priority levels.
+ * 8 best effort priority levels are supported
  */
-#define IOPRIO_NR_LEVELS	8
-#define IOPRIO_BE_NR		IOPRIO_NR_LEVELS
+#define IOPRIO_BE_NR	(8)
 
 enum {
 	IOPRIO_WHO_PROCESS = 1,
@@ -44,10 +43,9 @@ enum {
 };
 
 /*
- * Fallback BE priority level.
+ * Fallback BE priority
  */
-#define IOPRIO_NORM	4
-#define IOPRIO_BE_NORM	IOPRIO_NORM
+#define IOPRIO_NORM	(4)
 
 /*
  * if process has set io priority explicitly, use that. if not, convert
@@ -73,11 +71,6 @@ static inline int task_nice_ioclass(struct task_struct *task)
 }
 
 /*
- * Default IO priority.
- */
-#define IOPRIO_DEFAULT	IOPRIO_PRIO_VALUE(IOPRIO_CLASS_BE, IOPRIO_BE_NORM)
-
-/*
  * If the calling process has set an I/O priority, use that. Otherwise, return
  * the default I/O priority.
  */
@@ -87,7 +80,7 @@ static inline int get_current_ioprio(void)
 
 	if (ioc)
 		return ioc->ioprio;
-	return IOPRIO_DEFAULT;
+	return IOPRIO_PRIO_VALUE(IOPRIO_CLASS_NONE, 0);
 }
 
 /*

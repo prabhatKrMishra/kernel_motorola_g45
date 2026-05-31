@@ -93,12 +93,38 @@ static void blk_mq_hctx_clear_pending(struct blk_mq_hw_ctx *hctx,
 
 struct mq_inflight {
 	struct hd_struct *part;
-	unsigned int inflight[2];
+	unsigned int *inflight;
 };
 
 static bool blk_mq_check_inflight(struct blk_mq_hw_ctx *hctx,
 				  struct request *rq, void *priv,
 				  bool reserved)
+{
+	struct mq_inflight *mi = priv;
+
+	/*
+	 * index[0] counts the specific partition that was asked for.
+	 */
+	if (rq->part == mi->part)
+		mi->inflight[0]++;
+
+	return true;
+}
+
+unsigned int blk_mq_in_flight(struct request_queue *q, struct hd_struct *part)
+{
+	unsigned inflight[2];
+	struct mq_inflight mi = { .part = part, .inflight = inflight, };
+
+	inflight[0] = inflight[1] = 0;
+	blk_mq_queue_tag_busy_iter(q, blk_mq_check_inflight, &mi);
+
+	return inflight[0];
+}
+
+static bool blk_mq_check_inflight_rw(struct blk_mq_hw_ctx *hctx,
+				     struct request *rq, void *priv,
+				     bool reserved)
 {
 	struct mq_inflight *mi = priv;
 
@@ -108,23 +134,13 @@ static bool blk_mq_check_inflight(struct blk_mq_hw_ctx *hctx,
 	return true;
 }
 
-unsigned int blk_mq_in_flight(struct request_queue *q, struct hd_struct *part)
-{
-	struct mq_inflight mi = { .part = part };
-
-	blk_mq_queue_tag_busy_iter(q, blk_mq_check_inflight, &mi);
-
-	return mi.inflight[0] + mi.inflight[1];
-}
-
 void blk_mq_in_flight_rw(struct request_queue *q, struct hd_struct *part,
 			 unsigned int inflight[2])
 {
-	struct mq_inflight mi = { .part = part };
+	struct mq_inflight mi = { .part = part, .inflight = inflight, };
 
-	blk_mq_queue_tag_busy_iter(q, blk_mq_check_inflight, &mi);
-	inflight[0] = mi.inflight[0];
-	inflight[1] = mi.inflight[1];
+	inflight[0] = inflight[1] = 0;
+	blk_mq_queue_tag_busy_iter(q, blk_mq_check_inflight_rw, &mi);
 }
 
 void blk_freeze_queue_start(struct request_queue *q)
@@ -646,6 +662,18 @@ bool blk_mq_complete_request(struct request *rq)
 	return true;
 }
 EXPORT_SYMBOL(blk_mq_complete_request);
+
+int blk_mq_request_started(struct request *rq)
+{
+	return blk_mq_rq_state(rq) != MQ_RQ_IDLE;
+}
+EXPORT_SYMBOL_GPL(blk_mq_request_started);
+
+int blk_mq_request_completed(struct request *rq)
+{
+	return blk_mq_rq_state(rq) == MQ_RQ_COMPLETE;
+}
+EXPORT_SYMBOL_GPL(blk_mq_request_completed);
 
 void blk_mq_start_request(struct request *rq)
 {
@@ -1384,6 +1412,31 @@ static void __blk_mq_run_hw_queue(struct blk_mq_hw_ctx *hctx)
 	int srcu_idx;
 
 	/*
+	 * We should be running this queue from one of the CPUs that
+	 * are mapped to it.
+	 *
+	 * There are at least two related races now between setting
+	 * hctx->next_cpu from blk_mq_hctx_next_cpu() and running
+	 * __blk_mq_run_hw_queue():
+	 *
+	 * - hctx->next_cpu is found offline in blk_mq_hctx_next_cpu(),
+	 *   but later it becomes online, then this warning is harmless
+	 *   at all
+	 *
+	 * - hctx->next_cpu is found online in blk_mq_hctx_next_cpu(),
+	 *   but later it becomes offline, then the warning can't be
+	 *   triggered, and we depend on blk-mq timeout handler to
+	 *   handle dispatched requests to this hctx
+	 */
+	if (!cpumask_test_cpu(raw_smp_processor_id(), hctx->cpumask) &&
+		cpu_online(hctx->next_cpu)) {
+		printk(KERN_WARNING "run queue from wrong CPU %d, hctx %s\n",
+			raw_smp_processor_id(),
+			cpumask_empty(hctx->cpumask) ? "inactive": "active");
+		dump_stack();
+	}
+
+	/*
 	 * We can't run the queue inline with ints disabled. Ensure that
 	 * we catch bad users of this early.
 	 */
@@ -1478,7 +1531,7 @@ void blk_mq_delay_run_hw_queue(struct blk_mq_hw_ctx *hctx, unsigned long msecs)
 }
 EXPORT_SYMBOL(blk_mq_delay_run_hw_queue);
 
-void blk_mq_run_hw_queue(struct blk_mq_hw_ctx *hctx, bool async)
+bool blk_mq_run_hw_queue(struct blk_mq_hw_ctx *hctx, bool async)
 {
 	int srcu_idx;
 	bool need_run;
@@ -1496,8 +1549,12 @@ void blk_mq_run_hw_queue(struct blk_mq_hw_ctx *hctx, bool async)
 		blk_mq_hctx_has_pending(hctx);
 	hctx_unlock(hctx, srcu_idx);
 
-	if (need_run)
+	if (need_run) {
 		__blk_mq_delay_run_hw_queue(hctx, async, 0);
+		return true;
+	}
+
+	return false;
 }
 EXPORT_SYMBOL(blk_mq_run_hw_queue);
 
@@ -1705,20 +1762,28 @@ static int plug_rq_cmp(void *priv, struct list_head *a, struct list_head *b)
 	struct request *rqa = container_of(a, struct request, queuelist);
 	struct request *rqb = container_of(b, struct request, queuelist);
 
-	if (rqa->mq_ctx != rqb->mq_ctx)
-		return rqa->mq_ctx > rqb->mq_ctx;
-	if (rqa->mq_hctx != rqb->mq_hctx)
-		return rqa->mq_hctx > rqb->mq_hctx;
+	if (rqa->mq_ctx < rqb->mq_ctx)
+		return -1;
+	else if (rqa->mq_ctx > rqb->mq_ctx)
+		return 1;
+	else if (rqa->mq_hctx < rqb->mq_hctx)
+		return -1;
+	else if (rqa->mq_hctx > rqb->mq_hctx)
+		return 1;
 
 	return blk_rq_pos(rqa) > blk_rq_pos(rqb);
 }
 
 void blk_mq_flush_plug_list(struct blk_plug *plug, bool from_schedule)
 {
+	struct blk_mq_hw_ctx *this_hctx;
+	struct blk_mq_ctx *this_ctx;
+	struct request_queue *this_q;
+	struct request *rq;
 	LIST_HEAD(list);
+	LIST_HEAD(rq_list);
+	unsigned int depth;
 
-	if (list_empty(&plug->mq_list))
-		return;
 	list_splice_init(&plug->mq_list, &list);
 
 	if (plug->rq_count > 2 && plug->multiple_queues)
@@ -1726,27 +1791,42 @@ void blk_mq_flush_plug_list(struct blk_plug *plug, bool from_schedule)
 
 	plug->rq_count = 0;
 
-	do {
-		struct list_head rq_list;
-		struct request *rq, *head_rq = list_entry_rq(list.next);
-		struct list_head *pos = &head_rq->queuelist; /* skip first */
-		struct blk_mq_hw_ctx *this_hctx = head_rq->mq_hctx;
-		struct blk_mq_ctx *this_ctx = head_rq->mq_ctx;
-		unsigned int depth = 1;
+	this_q = NULL;
+	this_hctx = NULL;
+	this_ctx = NULL;
+	depth = 0;
 
-		for (pos = pos->next; pos != &list; pos = pos->next) {
-			rq = list_entry_rq(pos);
-			BUG_ON(!rq->q);
-			if (rq->mq_hctx != this_hctx || rq->mq_ctx != this_ctx)
-				break;
-			depth++;
+	while (!list_empty(&list)) {
+		rq = list_entry_rq(list.next);
+		list_del_init(&rq->queuelist);
+		BUG_ON(!rq->q);
+		if (rq->mq_hctx != this_hctx || rq->mq_ctx != this_ctx) {
+			if (this_hctx) {
+				trace_block_unplug(this_q, depth, !from_schedule);
+				blk_mq_sched_insert_requests(this_hctx, this_ctx,
+								&rq_list,
+								from_schedule);
+			}
+
+			this_q = rq->q;
+			this_ctx = rq->mq_ctx;
+			this_hctx = rq->mq_hctx;
+			depth = 0;
 		}
 
-		list_cut_before(&rq_list, &list, pos);
-		trace_block_unplug(head_rq->q, depth, !from_schedule);
+		depth++;
+		list_add_tail(&rq->queuelist, &rq_list);
+	}
+
+	/*
+	 * If 'this_hctx' is set, we know we have entries to complete
+	 * on 'rq_list'. Do those.
+	 */
+	if (this_hctx) {
+		trace_block_unplug(this_q, depth, !from_schedule);
 		blk_mq_sched_insert_requests(this_hctx, this_ctx, &rq_list,
 						from_schedule);
-	} while(!list_empty(&list));
+	}
 }
 
 static void blk_mq_bio_to_request(struct request *rq, struct bio *bio,
@@ -2435,7 +2515,8 @@ blk_mq_alloc_hctx(struct request_queue *q, struct blk_mq_tag_set *set,
 	init_waitqueue_func_entry(&hctx->dispatch_wait, blk_mq_dispatch_wake);
 	INIT_LIST_HEAD(&hctx->dispatch_wait.entry);
 
-	hctx->fq = blk_alloc_flush_queue(hctx->numa_node, set->cmd_size, gfp);
+	hctx->fq = blk_alloc_flush_queue(q, hctx->numa_node, set->cmd_size,
+			gfp);
 	if (!hctx->fq)
 		goto free_bitmap;
 
@@ -2837,22 +2918,6 @@ static void blk_mq_realloc_hw_ctxs(struct blk_mq_tag_set *set,
 	int i, j, end;
 	struct blk_mq_hw_ctx **hctxs = q->queue_hw_ctx;
 
-	if (q->nr_hw_queues < set->nr_hw_queues) {
-		struct blk_mq_hw_ctx **new_hctxs;
-
-		new_hctxs = kcalloc_node(set->nr_hw_queues,
-				       sizeof(*new_hctxs), GFP_KERNEL,
-				       set->numa_node);
-		if (!new_hctxs)
-			return;
-		if (hctxs)
-			memcpy(new_hctxs, hctxs, q->nr_hw_queues *
-			       sizeof(*hctxs));
-		q->queue_hw_ctx = new_hctxs;
-		kfree(hctxs);
-		hctxs = new_hctxs;
-	}
-
 	/* protect against switching io scheduler  */
 	mutex_lock(&q->sysfs_lock);
 	for (i = 0; i < set->nr_hw_queues; i++) {
@@ -2908,6 +2973,19 @@ static void blk_mq_realloc_hw_ctxs(struct blk_mq_tag_set *set,
 	mutex_unlock(&q->sysfs_lock);
 }
 
+/*
+ * Maximum number of hardware queues we support. For single sets, we'll never
+ * have more than the CPUs (software queues). For multiple sets, the tag_set
+ * user may have set ->nr_hw_queues larger.
+ */
+static unsigned int nr_hw_queues(struct blk_mq_tag_set *set)
+{
+	if (set->nr_maps == 1)
+		return nr_cpu_ids;
+
+	return max(set->nr_hw_queues, nr_cpu_ids);
+}
+
 struct request_queue *blk_mq_init_allocated_queue(struct blk_mq_tag_set *set,
 						  struct request_queue *q,
 						  bool elevator_init)
@@ -2926,6 +3004,12 @@ struct request_queue *blk_mq_init_allocated_queue(struct blk_mq_tag_set *set,
 
 	/* init q->mq_kobj and sw queues' kobjects */
 	blk_mq_sysfs_init(q);
+
+	q->nr_queues = nr_hw_queues(set);
+	q->queue_hw_ctx = kcalloc_node(q->nr_queues, sizeof(*(q->queue_hw_ctx)),
+						GFP_KERNEL, set->numa_node);
+	if (!q->queue_hw_ctx)
+		goto err_sys_init;
 
 	INIT_LIST_HEAD(&q->unused_hctx_list);
 	spin_lock_init(&q->unused_hctx_lock);
@@ -2974,6 +3058,7 @@ struct request_queue *blk_mq_init_allocated_queue(struct blk_mq_tag_set *set,
 err_hctxs:
 	kfree(q->queue_hw_ctx);
 	q->nr_hw_queues = 0;
+err_sys_init:
 	blk_mq_sysfs_deinit(q);
 err_poll:
 	blk_stat_free_callback(q->poll_cb);
@@ -3007,7 +3092,7 @@ static int __blk_mq_alloc_rq_maps(struct blk_mq_tag_set *set)
 
 out_unwind:
 	while (--i >= 0)
-		blk_mq_free_map_and_requests(set, i);
+		blk_mq_free_rq_map(set->tags[i]);
 
 	return -ENOMEM;
 }
@@ -3084,29 +3169,6 @@ static int blk_mq_update_queue_map(struct blk_mq_tag_set *set)
 	}
 }
 
-static int blk_mq_realloc_tag_set_tags(struct blk_mq_tag_set *set,
-				  int cur_nr_hw_queues, int new_nr_hw_queues)
-{
-	struct blk_mq_tags **new_tags;
-
-	if (cur_nr_hw_queues >= new_nr_hw_queues)
-		return 0;
-
-	new_tags = kcalloc_node(new_nr_hw_queues, sizeof(struct blk_mq_tags *),
-				GFP_KERNEL, set->numa_node);
-	if (!new_tags)
-		return -ENOMEM;
-
-	if (set->tags)
-		memcpy(new_tags, set->tags, cur_nr_hw_queues *
-		       sizeof(*set->tags));
-	kfree(set->tags);
-	set->tags = new_tags;
-	set->nr_hw_queues = new_nr_hw_queues;
-
-	return 0;
-}
-
 /*
  * Alloc a tag set to be associated with one or more request queues.
  * May fail with EINVAL for various error conditions. May adjust the
@@ -3160,7 +3222,9 @@ int blk_mq_alloc_tag_set(struct blk_mq_tag_set *set)
 	if (set->nr_maps == 1 && set->nr_hw_queues > nr_cpu_ids)
 		set->nr_hw_queues = nr_cpu_ids;
 
-	if (blk_mq_realloc_tag_set_tags(set, 0, set->nr_hw_queues) < 0)
+	set->tags = kcalloc_node(nr_hw_queues(set), sizeof(struct blk_mq_tags *),
+				 GFP_KERNEL, set->numa_node);
+	if (!set->tags)
 		return -ENOMEM;
 
 	ret = -ENOMEM;
@@ -3201,7 +3265,7 @@ void blk_mq_free_tag_set(struct blk_mq_tag_set *set)
 {
 	int i, j;
 
-	for (i = 0; i < set->nr_hw_queues; i++)
+	for (i = 0; i < nr_hw_queues(set); i++)
 		blk_mq_free_map_and_requests(set, i);
 
 	for (j = 0; j < set->nr_maps; j++) {
@@ -3348,6 +3412,10 @@ static void __blk_mq_update_nr_hw_queues(struct blk_mq_tag_set *set,
 	list_for_each_entry(q, &set->tag_list, tag_set_list)
 		blk_mq_freeze_queue(q);
 	/*
+	 * Sync with blk_mq_queue_tag_busy_iter.
+	 */
+	synchronize_rcu();
+	/*
 	 * Switch IO scheduler to 'none', cleaning up the data associated
 	 * with the previous scheduler. We will switch back once we are done
 	 * updating the new sw to hw queue mappings.
@@ -3362,10 +3430,6 @@ static void __blk_mq_update_nr_hw_queues(struct blk_mq_tag_set *set,
 	}
 
 	prev_nr_hw_queues = set->nr_hw_queues;
-	if (blk_mq_realloc_tag_set_tags(set, set->nr_hw_queues, nr_hw_queues) <
-	    0)
-		goto reregister;
-
 	set->nr_hw_queues = nr_hw_queues;
 fallback:
 	blk_mq_update_queue_map(set);
@@ -3381,7 +3445,6 @@ fallback:
 		blk_mq_map_swqueue(q);
 	}
 
-reregister:
 	list_for_each_entry(q, &set->tag_list, tag_set_list) {
 		blk_mq_sysfs_register(q);
 		blk_mq_debugfs_register_hctxs(q);

@@ -393,12 +393,17 @@ bool __blk_mq_sched_bio_merge(struct request_queue *q, struct bio *bio,
 	return ret;
 }
 
-bool blk_mq_sched_try_insert_merge(struct request_queue *q, struct request *rq,
-				   struct list_head *free)
+bool blk_mq_sched_try_insert_merge(struct request_queue *q, struct request *rq)
 {
-	return rq_mergeable(rq) && elv_attempt_insert_merge(q, rq, free);
+	return rq_mergeable(rq) && elv_attempt_insert_merge(q, rq);
 }
 EXPORT_SYMBOL_GPL(blk_mq_sched_try_insert_merge);
+
+void blk_mq_sched_request_inserted(struct request *rq)
+{
+	trace_block_rq_insert(rq->q, rq);
+}
+EXPORT_SYMBOL_GPL(blk_mq_sched_request_inserted);
 
 static bool blk_mq_sched_bypass_insert(struct blk_mq_hw_ctx *hctx,
 				       bool has_sched,

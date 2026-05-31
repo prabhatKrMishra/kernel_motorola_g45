@@ -99,7 +99,7 @@ static inline struct blk_mq_hw_ctx *blk_mq_map_queue_type(struct request_queue *
  * blk_mq_map_queue() - map (cmd_flags,type) to hardware queue
  * @q: request queue
  * @flags: request command flags
- * @ctx: software queue cpu ctx
+ * @cpu: cpu ctx
  */
 static inline struct blk_mq_hw_ctx *blk_mq_map_queue(struct request_queue *q,
 						     unsigned int flags,
@@ -129,6 +129,15 @@ extern void blk_mq_sysfs_unregister(struct request_queue *q);
 extern void blk_mq_hctx_kobj_init(struct blk_mq_hw_ctx *hctx);
 
 void blk_mq_release(struct request_queue *q);
+
+/**
+ * blk_mq_rq_state() - read the current MQ_RQ_* state of a request
+ * @rq: target request.
+ */
+static inline enum mq_rq_state blk_mq_rq_state(struct request *rq)
+{
+	return READ_ONCE(rq->state);
+}
 
 static inline struct blk_mq_ctx *__blk_mq_get_ctx(struct request_queue *q,
 					   unsigned int cpu)
@@ -269,17 +278,6 @@ static inline struct blk_plug *blk_mq_plug(struct request_queue *q,
 
 	/* Zoned block device write operation case: do not plug the BIO */
 	return NULL;
-}
-
-/* Free all requests on the list */
-static inline void blk_mq_free_requests(struct list_head *list)
-{
-	while (!list_empty(list)) {
-		struct request *rq = list_entry_rq(list->next);
-
-		list_del_init(&rq->queuelist);
-		blk_mq_free_request(rq);
-	}
 }
 
 #endif

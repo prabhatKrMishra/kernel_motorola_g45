@@ -51,8 +51,8 @@ static inline void __blk_get_queue(struct request_queue *q)
 
 bool is_flush_rq(struct request *req);
 
-struct blk_flush_queue *blk_alloc_flush_queue(int node, int cmd_size,
-					      gfp_t flags);
+struct blk_flush_queue *blk_alloc_flush_queue(struct request_queue *q,
+		int node, int cmd_size, gfp_t flags);
 void blk_free_flush_queue(struct blk_flush_queue *q);
 
 void blk_freeze_queue(struct request_queue *q);
@@ -230,7 +230,7 @@ int ll_front_merge_fn(struct request *req,  struct bio *bio,
 		unsigned int nr_segs);
 struct request *attempt_back_merge(struct request_queue *q, struct request *rq);
 struct request *attempt_front_merge(struct request_queue *q, struct request *rq);
-bool blk_attempt_req_merge(struct request_queue *q, struct request *rq,
+int blk_attempt_req_merge(struct request_queue *q, struct request *rq,
 				struct request *next);
 unsigned int blk_recalc_rq_segments(struct request *rq);
 void blk_rq_set_mixed_merge(struct request *rq);
@@ -243,11 +243,14 @@ int blk_dev_init(void);
  * Contribute to IO statistics IFF:
  *
  *	a) it's attached to a gendisk, and
- *	b) the queue had IO stats enabled when this request was started
+ *	b) the queue had IO stats enabled when this request was started, and
+ *	c) it's a file system request
  */
 static inline bool blk_do_io_stat(struct request *rq)
 {
-	return rq->rq_disk && (rq->rq_flags & RQF_IO_STAT);
+	return rq->rq_disk &&
+	       (rq->rq_flags & RQF_IO_STAT) &&
+		!blk_rq_is_passthrough(rq);
 }
 
 static inline void req_set_nomerge(struct request_queue *q, struct request *req)

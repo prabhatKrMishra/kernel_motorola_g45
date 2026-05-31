@@ -137,17 +137,6 @@ static void blk_flush_queue_rq(struct request *rq, bool add_front)
 	blk_mq_add_to_requeue_list(rq, add_front, true);
 }
 
-static void blk_account_io_flush(struct request *rq)
-{
-	struct hd_struct *part = &rq->rq_disk->part0;
-
-	part_stat_lock();
-	part_stat_inc(part, ios[STAT_FLUSH]);
-	part_stat_add(part, nsecs[STAT_FLUSH],
-		      ktime_get_ns() - rq->start_time_ns);
-	part_stat_unlock();
-}
-
 /**
  * blk_flush_complete_seq - complete flush sequence
  * @rq: PREFLUSH/FUA request being sequenced
@@ -197,7 +186,7 @@ static void blk_flush_complete_seq(struct request *rq,
 
 	case REQ_FSEQ_DONE:
 		/*
-		 * @rq was previously adjusted by blk_insert_flush() for
+		 * @rq was previously adjusted by blk_flush_issue() for
 		 * flush sequencing and may already have gone through the
 		 * flush data request completion path.  Restore @rq for
 		 * normal completion and end it.
@@ -223,8 +212,6 @@ static void flush_end_io(struct request *flush_rq, blk_status_t error)
 	unsigned long flags = 0;
 	struct blk_flush_queue *fq = blk_get_flush_queue(q, flush_rq->mq_ctx);
 	struct blk_mq_hw_ctx *hctx;
-
-	blk_account_io_flush(flush_rq);
 
 	/* release the tag's ownership to the req cloned from */
 	spin_lock_irqsave(&fq->mq_flush_lock, flags);
@@ -500,8 +487,8 @@ int blkdev_issue_flush(struct block_device *bdev, gfp_t gfp_mask,
 }
 EXPORT_SYMBOL(blkdev_issue_flush);
 
-struct blk_flush_queue *blk_alloc_flush_queue(int node, int cmd_size,
-					      gfp_t flags)
+struct blk_flush_queue *blk_alloc_flush_queue(struct request_queue *q,
+		int node, int cmd_size, gfp_t flags)
 {
 	struct blk_flush_queue *fq;
 	int rq_sz = sizeof(struct request);

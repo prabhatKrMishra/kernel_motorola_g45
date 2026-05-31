@@ -93,7 +93,7 @@ struct frag {				/* VBLK Fragment handling */
 	u8		num;		/* Total number of records */
 	u8		rec;		/* This is record number n */
 	u8		map;		/* Which portions are in use */
-	u8		data[];
+	u8		data[0];
 };
 
 /* In memory LDM database structures. */
