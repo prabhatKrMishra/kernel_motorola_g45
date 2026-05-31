@@ -14,7 +14,6 @@
 #include <trace/events/power.h>
 #include <linux/sched/sysctl.h>
 #include <trace/hooks/sched.h>
-#include <linux/math64.h>
 
 #define IOWAIT_BOOST_MIN	(SCHED_CAPACITY_SCALE / 8)
 
@@ -30,11 +29,6 @@ struct sugov_tunables {
 
 struct sugov_policy {
 	struct cpufreq_policy	*policy;
-
-	unsigned int		*util_freq;
-	/* Capacity delta between curve and linear for EAS */
-	unsigned long		*eas_bias;
-	unsigned long		max_cap;
 
 	u64 last_ws;
 	u64 curr_cycles;
@@ -195,200 +189,6 @@ static bool sugov_update_next_freq(struct sugov_policy *sg_policy, u64 time,
 	return true;
 }
 
-#define DEFAULT_DVFS_MARGIN 2
-static unsigned int sched_capacity_margin_dvfs = DEFAULT_DVFS_MARGIN;
-unsigned int util_scale;
-
-static void update_util_scale(void)
-{
-	util_scale = (SCHED_CAPACITY_SCALE * 100) / (100 - sched_capacity_margin_dvfs);
-}
-
-/*
- * Return schedutil capacity bias for a given CPU and capacity.
- *
- * The bias represents the delta between the nonlinear capacity mapping
- * and the linear model used by EAS. Values are precomputed and stored
- * in a lookup table for O(1) access on the fast path.
- *
- * @cpu: target CPU
- * @cap: capacity value used as index into the bias table
- *
- * Return: bias value, or 0 if unavailable or out of range.
- */
-unsigned long schedutil_get_eas_bias(int cpu, unsigned long cap)
-{
-	struct sugov_policy *sg_policy;
-	unsigned long bias = 0;
-
-	if (unlikely((unsigned int)cpu >= nr_cpu_ids))
-		return 0;
-
-	rcu_read_lock();
-	sg_policy = READ_ONCE(per_cpu(sugov_cpu, cpu).sg_policy);
-
-	if (sg_policy && sg_policy->eas_bias &&
-		cap < (sg_policy->max_cap + 1))
-		bias = sg_policy->eas_bias[cap];
-	rcu_read_unlock();
-
-	return bias;
-}
-EXPORT_SYMBOL_GPL(schedutil_get_eas_bias);
-
-/*
- * Map CPU frequency to capacity using a concave hybrid model.
- *
- * Rationale:
- * Linear scaling (capacity ∝ frequency) overestimates real throughput at
- * higher frequencies due to non-scaling factors such as memory latency
- * and pipeline bottlenecks. To model diminishing returns, this function
- * blends a linear component with a concave (square-root) component.
- *
- * Design goals:
- *  - Preserve monotonicity (higher freq → higher capacity)
- *  - Maintain numerical stability using fixed-point arithmetic
- *  - Guarantee capacity never exceeds max_cap (avoids scheduler overflow)
- *
- * Fixed-point domains:
- *  - ratio_q20 : Q20 representation of (freq / max_freq)
- *  - lin       : Q10 linear approximation of ratio
- *  - sqrt_cap  : Q10 approximation of sqrt(ratio)
- *
- * Blending strategy:
- *  - Below 50% frequency: purely linear
- *  - Above 50%: smoothly interpolate toward concave curve
- *  - Square-root path is clamped to linear to prevent overshoot
- */
-static unsigned long freq_to_power_cap(unsigned int freq,
-		unsigned long max_cap, unsigned int max_freq)
-{
-	u64 ratio_q20, lin, sqrt_cap;
-	u64 threshold_q20, w_q10, inv_w;
-	unsigned long max_ratio_q20;
-
-	if (freq == max_freq)
-		return max_cap;
-
-	if (max_cap < (SCHED_CAPACITY_SCALE * 95 / 100))
-		return mult_frac(freq, max_cap, max_freq);
-
-	max_ratio_q20 = (u64)SCHED_CAPACITY_SCALE << SCHED_CAPACITY_SHIFT;
-
-	threshold_q20 = max_ratio_q20 >> 1;
-
-	ratio_q20 = (u64)freq << (SCHED_CAPACITY_SHIFT * 2);
-	do_div(ratio_q20, max_freq);
-
-	lin = ratio_q20 >> SCHED_CAPACITY_SHIFT;
-
-	sqrt_cap = int_sqrt(ratio_q20);
-
-	if (sqrt_cap > SCHED_CAPACITY_SCALE)
-		sqrt_cap = SCHED_CAPACITY_SCALE;
-
-	if (ratio_q20 < threshold_q20)
-		return mult_frac(lin, max_cap, SCHED_CAPACITY_SCALE);
-
-	w_q10 = (ratio_q20 - threshold_q20) >> 9;
-	inv_w = SCHED_CAPACITY_SCALE - w_q10;
-
-	return mult_frac(
-		((lin * inv_w) + (sqrt_cap * w_q10)) >> SCHED_CAPACITY_SHIFT,
-		max_cap,
-		SCHED_CAPACITY_SCALE
-	);
-}
-
-/*
- * Initialize the O(1) frequency lookup array and the EAS cost bias array.
- *
- * Iterates backward through the frequency table. For each valid OPP, it calculates
- * capacity using the hybrid power curve (for big cores) or pure linear math
- * (for LITTLE cores).
- *
- * Concurrently, it calculates the delta between the power-curve capacity and
- * standard linear capacity. This delta is stored in the EAS bias array. By
- * applying this bias during energy calculations, EAS perceives intermediate
- * high-end OPPs as more "expensive" than they actually are, suppressing
- * unnecessary task migrations to the big core when it is operating in its
- * high-efficiency mid-range frequency range.
- */
-static int init_nonlinear_table(struct sugov_policy *sg_policy)
-{
-	struct cpufreq_policy *policy = sg_policy->policy;
-	unsigned long max_cap = arch_scale_cpu_capacity(policy->cpu);
-	struct cpufreq_frequency_table *pos;
-	int last_valid_idx = -1;
-	int i, j;
-
-	if (!policy->freq_table)
-		return -EINVAL;
-
-	cpufreq_for_each_entry_idx(pos, policy->freq_table, i) {
-		if (pos->frequency != CPUFREQ_ENTRY_INVALID)
-			last_valid_idx = i;
-	}
-
-	if (last_valid_idx < 0)
-		return -EINVAL;
-
-	sg_policy->max_cap = max_cap;
-	sg_policy->util_freq = kcalloc(max_cap + 1, sizeof(unsigned int), GFP_KERNEL);
-	if (!sg_policy->util_freq)
-		return -ENOMEM;
-
-	for (i = last_valid_idx; i >= 0; i--) {
-		unsigned long cap, next_cap;
-		unsigned int freq;
-
-		freq = policy->freq_table[i].frequency;
-		if (freq == CPUFREQ_ENTRY_INVALID)
-			continue;
-
-		cap = freq_to_power_cap(freq, max_cap, policy->cpuinfo.max_freq);
-		if (cap == 0)
-			continue;
-
-		next_cap = 0;
-		for (j = i - 1; j >= 0; j--) {
-			unsigned int next_freq = policy->freq_table[j].frequency;
-			if (next_freq != CPUFREQ_ENTRY_INVALID) {
-				next_cap = freq_to_power_cap(next_freq, max_cap, policy->cpuinfo.max_freq);
-				break;
-			}
-		}
-
-		for (j = cap; j >= (int)next_cap; j--) {
-			sg_policy->util_freq[j] = freq;
-
-			if (sg_policy->eas_bias) {
-				long delta = (long)cap - (long)mult_frac(freq, max_cap, policy->cpuinfo.max_freq);
-				if (delta > 0)
-					sg_policy->eas_bias[j] = delta;
-			}
-		}
-	}
-
-	return 0;
-}
-
-static void free_nonlinear_table(struct sugov_policy *sg_policy)
-{
-	if (sg_policy->util_freq)
-		kfree(sg_policy->util_freq);
-
-	sg_policy->util_freq = NULL;
-}
-
-static void free_eas_bias(struct sugov_policy *sg_policy)
-{
-	if (sg_policy->eas_bias)
-		kfree(sg_policy->eas_bias);
-
-	sg_policy->eas_bias = NULL;
-}
-
 static unsigned long freq_to_util(struct sugov_policy *sg_policy,
 				  unsigned int freq)
 {
@@ -485,20 +285,21 @@ static void sugov_deferred_update(struct sugov_policy *sg_policy, u64 time,
  * @util: Current CPU utilization.
  * @max: CPU capacity.
  *
- * First, invoke a vendor hook (trace_android_vh_map_util_freq) to allow
- * vendor-specific frequency overrides.
+ * If the utilization is frequency-invariant, choose the new frequency to be
+ * proportional to it, that is
  *
- * If not overridden, apply a configurable DVFS headroom margin to the
- * current utilization (replacing the legacy static 1.25x multiplier) and
- * clamp it to the CPU's maximum capacity.
+ * next_freq = C * max_freq * util / max
  *
- * The resulting scaled utilization is then used as a direct index into a
- * precomputed O(1) lookup array to find the lowest frequency capable of
- * handling the demand. This eliminates linear math overhead on the hotpath
- * and accurately selects frequencies based on discrete hardware OPP boundaries.
+ * Otherwise, approximate the would-be frequency-invariant utilization by
+ * util_raw * (curr_freq / max_freq) which leads to
  *
- * The final frequency is resolved against driver limitations and policy
- * min/max constraints before being returned.
+ * next_freq = C * curr_freq * util_raw / max
+ *
+ * Take C = 1.25 for the frequency tipping point at (util / max) = 0.8.
+ *
+ * The lowest driver-supported frequency which is equal or greater than the raw
+ * next_freq (as calculated above) is returned, subject to policy min/max and
+ * cpufreq driver limitations.
  */
 static unsigned int get_next_freq(struct sugov_policy *sg_policy,
 				  unsigned long util, unsigned long max)
@@ -509,17 +310,10 @@ static unsigned int get_next_freq(struct sugov_policy *sg_policy,
 	unsigned long next_freq = 0;
 
 	trace_android_vh_map_util_freq(util, freq, max, &next_freq);
-
-	if (next_freq) {
+	if (next_freq)
 		freq = next_freq;
-	} else {
-		unsigned long scaled_util = (util * util_scale) >> SCHED_CAPACITY_SHIFT;
-
-		if (scaled_util > sg_policy->max_cap)
-			scaled_util = sg_policy->max_cap;
-
-		freq = sg_policy->util_freq[scaled_util];
-	}
+	else
+		freq = map_util_freq(util, freq, max);
 
 	trace_sugov_next_freq(policy->cpu, util, max, freq);
 	if (freq == sg_policy->cached_raw_freq && !sg_policy->need_freq_update)
@@ -1410,7 +1204,6 @@ static int sugov_init(struct cpufreq_policy *policy)
 	struct sugov_policy *sg_policy;
 	struct sugov_tunables *tunables;
 	unsigned long util;
-	unsigned long max_cap;
 	int ret = 0;
 
 	/* State should be equivalent to EXIT */
@@ -1475,20 +1268,6 @@ static int sugov_init(struct cpufreq_policy *policy)
 
 	stale_ns = sched_ravg_window + (sched_ravg_window >> 3);
 
-	update_util_scale();
-
-	/* Only allocate this memory if currently initializing a Big Core. */
-	max_cap = arch_scale_cpu_capacity(policy->cpu);
-	if (max_cap >= (SCHED_CAPACITY_SCALE * 95 / 100))
-		sg_policy->eas_bias = kcalloc(max_cap + 1,
-			sizeof(unsigned long), GFP_KERNEL);
-
-	ret = init_nonlinear_table(sg_policy);
-	if (ret) {
-		pr_err("Failed to init nonlinear freq table\n");
-		goto fail;
-	}
-
 	sugov_tunables_restore(policy);
 
 	ret = kobject_init_and_add(&tunables->attr_set.kobj, &sugov_tunables_ktype,
@@ -1539,9 +1318,6 @@ static void sugov_exit(struct cpufreq_policy *policy)
 
 	mutex_unlock(&global_tunables_lock);
 
-	free_eas_bias(sg_policy);
-	free_nonlinear_table(sg_policy);
-
 	sugov_kthread_stop(sg_policy);
 	sugov_policy_free(sg_policy);
 	cpufreq_disable_fast_switch(policy);
@@ -1590,11 +1366,6 @@ static void sugov_stop(struct cpufreq_policy *policy)
 
 	for_each_cpu(cpu, policy->cpus)
 		cpufreq_remove_update_util_hook(cpu);
-
-	synchronize_rcu();
-
-	for_each_cpu(cpu, policy->cpus)
-		WRITE_ONCE(per_cpu(sugov_cpu, cpu).sg_policy, NULL);
 
 	synchronize_rcu();
 
