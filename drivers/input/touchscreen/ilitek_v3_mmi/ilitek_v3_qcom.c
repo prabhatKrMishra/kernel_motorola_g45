@@ -271,10 +271,11 @@ static void ilitek_plat_regulator_power_init(void)
 static int ilitek_plat_gpio_register(void)
 {
 	int ret = 0;
+	u32 flag;
 	struct device_node *dev_node = ilits->dev->of_node;
 
-	ilits->tp_int = of_get_named_gpio(dev_node, DTS_INT_GPIO, 0);
-	ilits->tp_rst = of_get_named_gpio(dev_node, DTS_RESET_GPIO, 0);
+	ilits->tp_int = of_get_named_gpio_flags(dev_node, DTS_INT_GPIO, 0, &flag);
+	ilits->tp_rst = of_get_named_gpio_flags(dev_node, DTS_RESET_GPIO, 0, &flag);
 
 	ILI_INFO("TP INT: %d\n", ilits->tp_int);
 	ILI_INFO("TP RESET: %d\n", ilits->tp_rst);
@@ -363,7 +364,7 @@ out:
 static irqreturn_t ilitek_plat_isr_top_half(int irq, void *dev_id)
 {
 	if (irq != ilits->irq_num) {
-		ILI_DBG("Incorrect irq number (%d)\n", irq);
+		ILI_ERR("Incorrect irq number (%d)\n", irq);
 		return IRQ_NONE;
 	}
 
@@ -947,10 +948,10 @@ static int ilitek_plat_probe(void)
 	ILI_INFO("platform probe\n");
 
 #if defined(CONFIG_INPUT_TOUCHSCREEN_MMI)
-	if (ilits->dev->of_node && !mmi_device_is_available(ilits->dev->of_node)) {
-		ILI_ERR("%s : mmi: device not supported\n", __func__);
-		return -ENODEV;
-	}
+        if (ilits->dev->of_node && !mmi_device_is_available(ilits->dev->of_node)) {
+            ILI_ERR("%s : mmi: device not supported\n", __func__);
+            return -ENODEV;
+        }
 #endif
 #if REGULATOR_POWER
 	ilitek_plat_regulator_power_init();
@@ -969,22 +970,14 @@ static int ilitek_plat_probe(void)
 	if (ilitek_plat_gpio_register() < 0)
 		ILI_ERR("Register gpio failed\n");
 
-	gpio_direction_output(ilits->tp_rst, 1);
-
-	ilits->irq_tirgger_type = irq_get_trigger_type(gpio_to_irq(ilits->tp_int));
-	if (ilits->irq_tirgger_type == IRQF_TRIGGER_NONE)
-		ilits->irq_tirgger_type = IRQF_TRIGGER_FALLING;
+	ili_irq_register(ilits->irq_tirgger_type);
 
 	if (ili_tddi_init() < 0) {
 		ILI_ERR("ILITEK Driver probe failed\n");
+		ili_irq_unregister();
 		ili_dev_remove(DISABLE);
 		return -ENODEV;
 	}
-
-	if (ili_irq_register(ilits->irq_tirgger_type) < 0) {
-		ILI_ERR("Failed to register IRQ\n");
-	}
-
 #if SPRD_SYSFS_SUSPEND_RESUME
 	ili_sysfs_add_device(ilits->dev);
 	if (sysfs_create_link(NULL, &ilits->dev->kobj, "touchscreen") < 0)

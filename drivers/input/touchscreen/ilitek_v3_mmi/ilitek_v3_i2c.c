@@ -273,7 +273,7 @@ static int ili_i2c_wrapper(u8 *txbuf, u32 wlen, u8 *rxbuf, u32 rlen, bool spi_ir
 				break;
 			}
 		} else {
-			usleep_range(1000, 1200);
+			msleep(1);
 		}
 
 		ret = ilitek_i2c_read(rxbuf, rlen);

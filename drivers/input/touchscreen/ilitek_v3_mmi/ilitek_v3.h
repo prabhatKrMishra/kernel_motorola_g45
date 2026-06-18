@@ -145,7 +145,7 @@
 #define MT_B_TYPE				ENABLE
 #define TDDI_RST_BIND			DISABLE
 #define MT_PRESSURE				DISABLE
-#define ENABLE_WQ_ESD			ENABLE
+#define ENABLE_WQ_ESD			DISABLE
 #define ENABLE_WQ_BAT			DISABLE
 #ifdef ILI_SENSOR_EN
 #define ENABLE_GESTURE			ENABLE
@@ -174,7 +174,7 @@
 #endif
 #define ENABLE_EDGE_PALM_PARA		DISABLE
 #define MULTI_REPORT_RATE		DISABLE
-#define ENGINEER_FLOW			DISABLE
+#define ENGINEER_FLOW			ENABLE
 #define DMESG_SEQ_FILE			ENABLE
 #ifdef GKI_EN_FLAG
 #define GENERIC_KERNEL_IMAGE	ENABLE/*follow gki */
@@ -1214,7 +1214,6 @@ struct ilitek_ts_data {
 	int finger;
 	u8 customertype_off;
 	u32 cdc_data_len;
-	u32 touchs;
 	u8 gesture_data_type;
 	bool compress_disable;
 	bool compress_handonly_disable;
