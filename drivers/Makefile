@@ -197,5 +197,3 @@ obj-$(CONFIG_MOTO_FOGOS_MODULES) += moto_swap/
 obj-$(CONFIG_MOTO_FOGOS_MODULES) += sensors/
 obj-$(CONFIG_MOTO_FOGOS_MODULES) += watchdogtest/
 
-
-obj-$(CONFIG_KSU) += kernelsu/
