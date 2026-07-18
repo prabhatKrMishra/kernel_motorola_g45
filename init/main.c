@@ -408,10 +408,16 @@ static void __init patch_or_add_flag(char *cmd, const char *flag, const char *va
 	}
 }
 
+static bool __init cmdline_has_flag(const char *cmd, const char *flag)
+{
+	return strstr(cmd, flag) != NULL;
+}
+
 static void __init patch_cmdline_flags(char *cmd)
 {
 	patch_or_add_flag(cmd, "androidboot.flash.locked=", "1");
-	patch_or_add_flag(cmd, "androidboot.verifiedbootstate=", "green");
+	if (cmdline_has_flag(cmd, "androidboot.vbmeta.digest="))
+		patch_or_add_flag(cmd, "androidboot.verifiedbootstate=", "green");
 	patch_or_add_flag(cmd, "androidboot.veritymode=", "enforcing");
 	patch_or_add_flag(cmd, "androidboot.vbmeta.device_state=", "locked");
 	patch_or_add_flag(cmd, "androidboot.bl_state=", "1");
