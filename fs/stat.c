@@ -28,6 +28,7 @@
 extern void susfs_sus_kstat_spoof_generic_fillattr(struct inode *inode, struct kstat *stat);
 #endif
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+struct mount;
 extern int susfs_get_non_sus_mnt_id_from_mnt(struct mount *orig_mnt);
 #endif
 
@@ -154,6 +155,14 @@ EXPORT_SYMBOL_NS(vfs_getattr, ANDROID_GKI_VFS_EXPORT_ONLY);
  *
  * 0 will be returned on success, and a -ve error code if unsuccessful.
  */
+
+#ifdef CONFIG_KSU_SUSFS
+extern struct static_key_true ksu_is_init_rc_hook_enabled;
+#endif
+#ifdef CONFIG_KSU
+extern void ksu_handle_vfs_fstat(int fd, loff_t *kstat_size_ptr);
+#endif
+
 int vfs_statx_fd(unsigned int fd, struct kstat *stat,
 		 u32 request_mask, unsigned int query_flags)
 {
@@ -184,10 +193,8 @@ extern int ksu_handle_stat(int *dfd, const char __user **filename_user,
 #endif
 
 #ifdef CONFIG_KSU_SUSFS
-extern struct static_key_true ksu_su_compat_enabled;
+extern bool ksu_su_compat_enabled;
 extern bool __ksu_is_allow_uid_for_current(uid_t uid);
-extern struct static_key_true ksu_is_init_rc_hook_enabled;
-extern void ksu_handle_vfs_fstat(int fd, loff_t *kstat_size_ptr);
 #endif
 
 /**
@@ -216,7 +223,7 @@ int vfs_statx(int dfd, const char __user *filename, int flags,
 #ifdef CONFIG_KSU_SUSFS
 	if (likely(susfs_is_current_proc_umounted()))
 		goto orig_flow;
-	if (static_branch_likely(&ksu_su_compat_enabled)) {
+	if (ksu_su_compat_enabled) {
 		if (unlikely(__ksu_is_allow_uid_for_current(current_uid().val)))
 			ksu_handle_stat(&dfd, &filename, &flags);
 	}
