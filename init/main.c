@@ -369,34 +369,52 @@ static inline void setup_nr_cpu_ids(void) { }
 static inline void smp_prepare_cpus(unsigned int maxcpus) { }
 #endif
 
-static void __init patch_flag(char *cmd, const char *flag, const char *val)
+static void __init patch_or_add_flag(char *cmd, const char *flag, const char *val)
 {
-    size_t flag_len, val_len;
-    char *start, *end;
+	size_t flag_len = strlen(flag);
+	size_t val_len = strlen(val);
+	char *pos = cmd;
+	bool found = false;
 
-    start = strstr(cmd, flag);
-    if (!start)
-        return;
+	while ((pos = strstr(pos, flag))) {
+		char *start = pos;
+		size_t old_val_len = strcspn(start + flag_len, " ");
+		char *end = start + flag_len + old_val_len;
 
-    flag_len = strlen(flag);
-    val_len = strlen(val);
-    end = start + flag_len + strcspn(start + flag_len, " ");
+		found = true;
 
-    if ((start + flag_len + val_len) >= (cmd + COMMAND_LINE_SIZE))
-        return;
+		memmove(start + flag_len + val_len, end, strlen(end) + 1);
 
-    memmove(start + flag_len + val_len, end, strlen(end) + 1);
-    memcpy(start + flag_len, val, val_len);
+		memcpy(start + flag_len, val, val_len);
+
+		pos = start + flag_len + val_len;
+	}
+
+	if (!found) {
+		size_t cmd_len = strlen(cmd);
+		size_t space = (cmd_len > 0) ? 1 : 0;
+		size_t add_len = space + flag_len + val_len;
+
+		if (cmd_len >= COMMAND_LINE_SIZE)
+			return;
+
+		if (cmd_len + add_len >= COMMAND_LINE_SIZE)
+			return;
+
+		if (space)
+			cmd[cmd_len++] = ' ';
+
+		sprintf(cmd + cmd_len, "%s%s", flag, val);
+	}
 }
 
-static void __init patch_safetynet_flags(char *cmd)
+static void __init patch_cmdline_flags(char *cmd)
 {
-    patch_flag(cmd, "androidboot.flash.locked=", "1");
-    patch_flag(cmd, "androidboot.verifiedbootstate=", "green");
-    patch_flag(cmd, "androidboot.veritymode=", "enforcing");
-    patch_flag(cmd, "androidboot.vbmeta.device_state=", "locked");
-    patch_flag(cmd, "androidboot.bl_state=", "1");
-    patch_flag(cmd, "androidboot.write_protect=", "1");
+	patch_or_add_flag(cmd, "androidboot.flash.locked=", "1");
+	patch_or_add_flag(cmd, "androidboot.verifiedbootstate=", "green");
+	patch_or_add_flag(cmd, "androidboot.veritymode=", "enforcing");
+	patch_or_add_flag(cmd, "androidboot.vbmeta.device_state=", "locked");
+	patch_or_add_flag(cmd, "androidboot.bl_state=", "1");
 }
 
 /*
@@ -407,22 +425,23 @@ static void __init patch_safetynet_flags(char *cmd)
  */
 static void __init setup_command_line(char *command_line)
 {
-	size_t len = strlen(boot_command_line) + 1;
+	size_t len;
+
+	patch_cmdline_flags(boot_command_line);
+
+	len = strlen(boot_command_line) + 1;
 
 	saved_command_line = memblock_alloc(len, SMP_CACHE_BYTES);
 	if (!saved_command_line)
 		panic("%s: Failed to allocate %zu bytes\n", __func__, len);
 
-	initcall_command_line =	memblock_alloc(len, SMP_CACHE_BYTES);
+	initcall_command_line = memblock_alloc(len, SMP_CACHE_BYTES);
 	if (!initcall_command_line)
 		panic("%s: Failed to allocate %zu bytes\n", __func__, len);
 
 	static_command_line = memblock_alloc(len, SMP_CACHE_BYTES);
 	if (!static_command_line)
 		panic("%s: Failed to allocate %zu bytes\n", __func__, len);
-
-	/* Patch the final command line string after it’s stored */
-	patch_safetynet_flags(boot_command_line);
 
 	strcpy(saved_command_line, boot_command_line);
 	strcpy(static_command_line, command_line);
