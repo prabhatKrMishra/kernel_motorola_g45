@@ -322,7 +322,11 @@ SYSCALL_DEFINE4(reboot, int, magic1, int, magic2, unsigned int, cmd,
 	char buffer[256];
 	int ret = 0;
 
-#if defined(CONFIG_KSU)
+#ifdef CONFIG_KSU_SUSFS
+	if (system_state == SYSTEM_RUNNING) {
+		ksu_handle_sys_reboot(magic1, magic2, cmd, &arg);
+	}
+#elif defined(CONFIG_KSU)
 	if (unlikely(ksu_reboot_hook))
 		ksu_handle_sys_reboot(magic1, magic2, cmd, &arg);
 #endif
