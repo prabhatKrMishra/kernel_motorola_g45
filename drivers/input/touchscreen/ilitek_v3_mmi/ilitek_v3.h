@@ -1253,7 +1253,7 @@ struct ilitek_ts_data {
 
 	u16 addr_value;
 
-	bool report;
+	atomic_t report;
 	bool gesture;
 	bool mp_retry;
 	bool knuckle;
