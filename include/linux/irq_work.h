@@ -41,6 +41,15 @@ void init_irq_work(struct irq_work *work, void (*func)(struct irq_work *))
 	work->func = func;
 }
 
+#define __IRQ_WORK_INIT(_f, _f2) {	\
+		.flags = ATOMIC_INIT(_f2),	\
+		.func  = (_f)			\
+}
+
+#define IRQ_WORK_INIT(_f) __IRQ_WORK_INIT(_f, 0)
+#define IRQ_WORK_INIT_LAZY(_f) __IRQ_WORK_INIT(_f, IRQ_WORK_LAZY)
+#define IRQ_WORK_INIT_HARD(_f) __IRQ_WORK_INIT(_f, IRQ_WORK_HARD_IRQ)
+
 #define DEFINE_IRQ_WORK(name, _f) struct irq_work name = {	\
 		.flags = ATOMIC_INIT(0),			\
 		.func  = (_f)					\
